@@ -12,8 +12,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Form Creator",
+  title: "FormCraft",
   description: "KI-gestützter Form Builder",
+  icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({

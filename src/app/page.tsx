@@ -3,6 +3,7 @@ import { Sparkles, MousePointerClick, GitBranch, BarChart3, Share2, FileDown } f
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Logo } from "@/components/shared/logo";
 
 const FEATURES = [
   {
@@ -42,7 +43,8 @@ export default function Home() {
     <div className="bg-background flex flex-1 flex-col items-center px-6 py-16">
       <div className="w-full max-w-3xl space-y-12 text-center">
         <div className="space-y-4">
-          <h1 className="text-text-primary text-3xl font-semibold sm:text-4xl">Form Creator</h1>
+          <h1 className="sr-only">FormCraft</h1>
+          <Logo className="mx-auto h-20 sm:h-24" priority />
           <p className="text-text-secondary mx-auto max-w-xl text-base">
             Formulare per KI-Beschreibung, Vorlage oder manuell erstellen — im visuellen Builder
             bearbeiten, veröffentlichen und auswerten.

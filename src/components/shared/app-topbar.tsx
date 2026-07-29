@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { logoutAction } from "@/features/workspaces/actions/auth-actions";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/shared/logo";
 import type { CurrentUser } from "@/lib/db/repositories/profile";
 import type { WorkspaceSummary } from "@/lib/db/repositories/workspaces";
 
@@ -15,7 +17,13 @@ export function AppTopbar({ user, workspaces }: AppTopbarProps) {
   return (
     <header className="border-border bg-surface flex h-(--layout-header-height) shrink-0 items-center justify-between border-b px-6">
       <div className="flex items-center gap-3">
-        <span className="text-text-primary text-sm font-semibold">Form Creator</span>
+        <Link
+          href="/dashboard"
+          aria-label="FormCraft — zum Dashboard"
+          className="flex items-center"
+        >
+          <Logo className="h-7" priority />
+        </Link>
         {currentWorkspace ? (
           <>
             <span className="text-text-muted">/</span>

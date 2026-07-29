@@ -6,7 +6,7 @@ describe("Home page", () => {
   it("renders the product title and a link to the token demo", () => {
     render(<Home />);
 
-    expect(screen.getByRole("heading", { name: "Form Creator" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "FormCraft" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Design-Token-Übersicht ansehen" })).toHaveAttribute(
       "href",
       "/dev/tokens",
