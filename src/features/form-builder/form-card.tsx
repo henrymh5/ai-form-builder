@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { MoreVertical } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
@@ -23,7 +22,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShareDialog } from "@/features/form-builder/share-dialog";
-import type { FormStatus, FormSummary } from "@/lib/db/repositories/forms";
+import { FormStatusBadge } from "@/features/form-builder/form-status-badge";
+import type { FormSummary } from "@/lib/db/repositories/forms";
 import {
   archiveFormAction,
   deleteFormAction,
@@ -32,20 +32,6 @@ import {
   renameFormAction,
   resumeFormAction,
 } from "@/features/form-builder/actions/form-actions";
-
-const STATUS_LABEL: Record<FormStatus, string> = {
-  draft: "Entwurf",
-  published: "Veröffentlicht",
-  paused: "Pausiert",
-  archived: "Archiviert",
-};
-
-const STATUS_VARIANT: Record<FormStatus, "neutral" | "success" | "warning"> = {
-  draft: "neutral",
-  published: "success",
-  paused: "warning",
-  archived: "neutral",
-};
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("de-DE", {
@@ -86,9 +72,7 @@ export function FormCard({ form }: { form: FormSummary }) {
           <Link href={`/forms/${form.id}`} className="hover:underline">
             <h3 className="text-text-primary truncate text-base font-semibold">{form.title}</h3>
           </Link>
-          <Badge variant={STATUS_VARIANT[form.status]} className="mt-1.5">
-            {STATUS_LABEL[form.status]}
-          </Badge>
+          <FormStatusBadge status={form.status} className="mt-1.5" />
         </div>
 
         <DropdownMenu>

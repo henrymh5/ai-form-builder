@@ -30,7 +30,7 @@ test("owner can view, archive, and delete a submitted response", async ({ page, 
   await page.getByRole("button", { name: "Veröffentlichen" }).click();
   await expect(page.getByText("Veröffentlicht!")).toBeVisible({ timeout: 10000 });
 
-  await page.goto("/dashboard");
+  await page.goto("/forms");
   const formCard = page.getByTestId("form-card").filter({ hasText: "Responses Form" });
   await formCard.getByRole("button", { name: "Aktionen" }).click();
   await page.getByRole("menuitem", { name: "Teilen" }).click();

@@ -29,7 +29,7 @@ test("a published form is publicly reachable, fillable, and submits successfully
   await page.getByRole("button", { name: "Veröffentlichen" }).click();
   await expect(page.getByText("Veröffentlicht!")).toBeVisible({ timeout: 10000 });
 
-  await page.goto("/dashboard");
+  await page.goto("/forms");
   const formCard = page.getByTestId("form-card").filter({ hasText: "Public Form" });
   await formCard.getByRole("button", { name: "Aktionen" }).click();
   const href = await page.getByRole("menuitem", { name: "Vorschau öffnen" }).getAttribute("href");

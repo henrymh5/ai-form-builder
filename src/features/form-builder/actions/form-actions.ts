@@ -21,6 +21,15 @@ export interface FormActionState {
   error?: string;
 }
 
+/**
+ * Refreshes both places a form's data is shown: the list at `/forms` and the dashboard's
+ * statistics and recent-activity tiles.
+ */
+function revalidateFormViews(): void {
+  revalidatePath("/forms");
+  revalidatePath("/dashboard");
+}
+
 export interface SaveDraftResult {
   newRevision: number;
 }
@@ -86,7 +95,7 @@ export async function duplicateFormAction(formData: FormData): Promise<void> {
   if (!user) return;
 
   await duplicateForm(parsed.data.formId, user.id);
-  revalidatePath("/dashboard");
+  revalidateFormViews();
 }
 
 const renameFormSchema = z.object({
@@ -102,35 +111,35 @@ export async function renameFormAction(formData: FormData): Promise<void> {
   if (!parsed.success) return;
 
   await renameForm(parsed.data.formId, parsed.data.title);
-  revalidatePath("/dashboard");
+  revalidateFormViews();
 }
 
 export async function pauseFormAction(formData: FormData): Promise<void> {
   const parsed = formIdSchema.safeParse({ formId: formData.get("formId") });
   if (!parsed.success) return;
   await setFormStatus(parsed.data.formId, "paused");
-  revalidatePath("/dashboard");
+  revalidateFormViews();
 }
 
 export async function resumeFormAction(formData: FormData): Promise<void> {
   const parsed = formIdSchema.safeParse({ formId: formData.get("formId") });
   if (!parsed.success) return;
   await setFormStatus(parsed.data.formId, "draft");
-  revalidatePath("/dashboard");
+  revalidateFormViews();
 }
 
 export async function archiveFormAction(formData: FormData): Promise<void> {
   const parsed = formIdSchema.safeParse({ formId: formData.get("formId") });
   if (!parsed.success) return;
   await setFormStatus(parsed.data.formId, "archived");
-  revalidatePath("/dashboard");
+  revalidateFormViews();
 }
 
 export async function deleteFormAction(formData: FormData): Promise<void> {
   const parsed = formIdSchema.safeParse({ formId: formData.get("formId") });
   if (!parsed.success) return;
   await softDeleteForm(parsed.data.formId);
-  revalidatePath("/dashboard");
+  revalidateFormViews();
 }
 
 const publishFormSchema = z.object({
@@ -166,7 +175,7 @@ export async function publishFormAction(
     };
   }
 
-  revalidatePath("/dashboard");
+  revalidateFormViews();
   revalidatePath(`/forms/${parsed.data.formId}`);
   return { success: true };
 }

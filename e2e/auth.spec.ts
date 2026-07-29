@@ -19,7 +19,7 @@ test("a new user can register and lands on the dashboard with their workspace", 
   await page.getByRole("button", { name: "Konto erstellen" }).click();
 
   await expect(page).toHaveURL(/\/dashboard/);
-  await expect(page.getByRole("heading", { name: "Formulare" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await expect(page.getByText("Noch keine Formulare")).toBeVisible();
 
   await page.getByRole("link", { name: "Workspace" }).click();

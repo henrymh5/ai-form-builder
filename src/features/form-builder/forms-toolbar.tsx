@@ -21,7 +21,7 @@ export function FormsToolbar() {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
     else params.delete(key);
-    startTransition(() => router.push(`/dashboard?${params.toString()}`));
+    startTransition(() => router.push(`/forms?${params.toString()}`));
   }
 
   return (

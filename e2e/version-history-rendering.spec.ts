@@ -34,7 +34,7 @@ test("publishing v2 updates the public page while an old response still renders 
   await page.getByRole("button", { name: "Veröffentlichen" }).click();
   await expect(page.getByText("Veröffentlicht!")).toBeVisible({ timeout: 10000 });
 
-  await page.goto("/dashboard");
+  await page.goto("/forms");
   const formCard = page.getByTestId("form-card").filter({ hasText: "Version Form" });
   await formCard.getByRole("button", { name: "Aktionen" }).click();
   await page.getByRole("menuitem", { name: "Teilen" }).click();

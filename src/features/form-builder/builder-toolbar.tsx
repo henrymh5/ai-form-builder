@@ -47,7 +47,7 @@ export function BuilderToolbar({
     <div className="border-border bg-surface flex min-h-14 w-full shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-4 py-2">
       <div className="flex min-w-0 items-center gap-3">
         <Link
-          href="/dashboard"
+          href="/forms"
           className="text-text-secondary hover:text-text-primary flex shrink-0 items-center gap-1 text-sm"
         >
           <ArrowLeft className="size-4" />

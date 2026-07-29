@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Dashboard CRUD E2E (plan §4). Registers a fresh user per test (isolated
- * workspace) and exercises the form lifecycle actions end to end.
+ * Form list CRUD E2E (plan §4). Registers a fresh user per test (isolated
+ * workspace) and exercises the form lifecycle actions end to end. The list
+ * lives at `/forms`; `/dashboard` shows workspace statistics instead.
  */
 async function registerNewUser(page: import("@playwright/test").Page) {
   const email = `e2e-dash-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
@@ -14,7 +15,7 @@ async function registerNewUser(page: import("@playwright/test").Page) {
   await expect(page).toHaveURL(/\/dashboard/);
 }
 
-test("creates a blank form and it appears on the dashboard", async ({ page }) => {
+test("creates a blank form and it appears in the form list", async ({ page }) => {
   await registerNewUser(page);
 
   await page.getByRole("button", { name: "Neues Formular" }).click();
@@ -23,7 +24,7 @@ test("creates a blank form and it appears on the dashboard", async ({ page }) =>
 
   await expect(page).toHaveURL(/\/forms\/[0-9a-f-]+/);
 
-  await page.goto("/dashboard");
+  await page.goto("/forms");
   await expect(page.getByRole("heading", { name: "Kontaktformular" })).toBeVisible();
   await expect(page.getByText("Entwurf")).toBeVisible();
 });
@@ -34,7 +35,7 @@ test("renames, duplicates, archives, and deletes a form", async ({ page }) => {
   await page.getByRole("button", { name: "Neues Formular" }).click();
   await page.getByLabel("Titel").fill("Umfrage");
   await page.getByRole("button", { name: "Formular erstellen" }).click();
-  await page.goto("/dashboard");
+  await page.goto("/forms");
 
   await page.getByRole("button", { name: "Aktionen" }).click();
   await page.getByRole("menuitem", { name: "Umbenennen" }).click();
@@ -66,14 +67,39 @@ test("search and status filter narrow the form list", async ({ page }) => {
   await page.getByRole("button", { name: "Neues Formular" }).click();
   await page.getByLabel("Titel").fill("Alpha Formular");
   await page.getByRole("button", { name: "Formular erstellen" }).click();
-  await page.goto("/dashboard");
+  await page.goto("/forms");
 
   await page.getByRole("button", { name: "Neues Formular" }).click();
   await page.getByLabel("Titel").fill("Beta Formular");
   await page.getByRole("button", { name: "Formular erstellen" }).click();
-  await page.goto("/dashboard");
+  await page.goto("/forms");
 
   await page.getByLabel("Formulare durchsuchen").fill("Alpha");
   await expect(page.getByRole("heading", { name: "Alpha Formular" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Beta Formular" })).toHaveCount(0);
+});
+
+test("the dashboard shows workspace statistics rather than the form list", async ({ page }) => {
+  await registerNewUser(page);
+
+  // An empty workspace still renders the stat grid.
+  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Zuletzt bearbeitet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Neueste Antworten" })).toBeVisible();
+  await expect(page.getByText("Noch keine Formulare")).toBeVisible();
+
+  await page.getByRole("button", { name: "Neues Formular" }).click();
+  await page.getByLabel("Titel").fill("Statistik Formular");
+  await page.getByRole("button", { name: "Formular erstellen" }).click();
+  await expect(page).toHaveURL(/\/forms\/[0-9a-f-]+/);
+
+  await page.goto("/dashboard");
+  // The new form is counted and surfaced under "recently edited"…
+  await expect(page.getByRole("heading", { name: "Statistik Formular" })).toBeVisible();
+  // …but the list's own toolbar belongs to /forms, not here.
+  await expect(page.getByLabel("Formulare durchsuchen")).toHaveCount(0);
+
+  await page.getByRole("link", { name: "Alle Formulare" }).click();
+  await expect(page).toHaveURL(/\/forms$/);
+  await expect(page.getByLabel("Formulare durchsuchen")).toBeVisible();
 });
