@@ -19,6 +19,10 @@ import {
   createBlankFormAction,
   type FormActionState,
 } from "@/features/form-builder/actions/form-actions";
+import {
+  GENERATE_REQUEST_KEY,
+  type GenerateRequest,
+} from "@/features/form-builder/generate-form-client";
 
 const initialState: FormActionState = {};
 
@@ -118,29 +122,18 @@ function AiFormTab({ workspaceId, onClose }: { workspaceId: string; onClose: () 
   const router = useRouter();
   const [description, setDescription] = useState("");
   const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleGenerate() {
+  /**
+   * Hands the prompt to the waiting page and navigates there right away. Generation takes
+   * 10–30s, so the request itself is issued by that page — leaving the user staring at a
+   * frozen dialog for that long is the problem this replaces.
+   */
+  function handleGenerate() {
     setIsPending(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/ai/generate-form", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceId, description }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.error?.message ?? "Formular konnte nicht generiert werden.");
-        return;
-      }
-      onClose();
-      router.push(`/forms/${data.formId}`);
-    } catch {
-      setError("Formular konnte nicht generiert werden.");
-    } finally {
-      setIsPending(false);
-    }
+    const request: GenerateRequest = { workspaceId, description: description.trim() };
+    sessionStorage.setItem(GENERATE_REQUEST_KEY, JSON.stringify(request));
+    onClose();
+    router.push("/forms/generate");
   }
 
   return (
@@ -157,11 +150,6 @@ function AiFormTab({ workspaceId, onClose }: { workspaceId: string; onClose: () 
           maxLength={2000}
         />
       </div>
-      {error ? (
-        <p role="alert" className="text-error text-sm">
-          {error}
-        </p>
-      ) : null}
       <DialogFooter>
         <Button
           type="button"
@@ -169,7 +157,7 @@ function AiFormTab({ workspaceId, onClose }: { workspaceId: string; onClose: () 
           onClick={handleGenerate}
           disabled={isPending || description.trim().length < 10}
         >
-          {isPending ? "Wird generiert…" : "Formular generieren"}
+          {isPending ? "Wird geöffnet…" : "Formular generieren"}
         </Button>
       </DialogFooter>
     </div>

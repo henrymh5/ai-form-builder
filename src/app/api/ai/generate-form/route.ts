@@ -17,6 +17,9 @@ const requestSchema = z.object({
   description: z.string().min(10).max(2000),
 });
 
+/** Generation runs synchronously and can take ~30s, so the default function timeout is too tight (plan §5.4). */
+export const maxDuration = 60;
+
 /**
  * POST /api/ai/generate-form (plan §11 §22 "Vollständiges Formular
  * generieren"). Flow: auth -> rate limit -> Claude (structured output) ->

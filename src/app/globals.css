@@ -196,6 +196,25 @@ body {
   }
 }
 
+/*
+ * Indeterminate progress bar for waits with no measurable progress (AI generation).
+ * Deliberately not a percentage bar — we get no intermediate signal from the request,
+ * and a fake percentage that stalls is worse than an honest "still working" motion.
+ */
+@keyframes builder-indeterminate {
+  0% {
+    margin-left: 0%;
+    width: 15%;
+  }
+  50% {
+    width: 45%;
+  }
+  100% {
+    margin-left: 85%;
+    width: 15%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

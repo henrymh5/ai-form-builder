@@ -11,8 +11,11 @@ const NAV_ITEMS = [
   { href: "/workspace", label: "Workspace", icon: Users },
 ] as const;
 
-/** Matches the builder route (`/forms/<id>`) but not its sub-pages (responses, analytics). */
-const BUILDER_ROUTE = /^\/forms\/[^/]+$/;
+/**
+ * Matches the builder route (`/forms/<uuid>`) but not its sub-pages (responses, analytics)
+ * nor sibling routes like `/forms/generate` — hence the UUID shape rather than `[^/]+`.
+ */
+const BUILDER_ROUTE = /^\/forms\/[0-9a-f-]{36}$/i;
 
 /** Compact sidebar navigation — Style-Guide §23.10/§23.5. */
 export function AppNavigation() {
