@@ -32,9 +32,7 @@ test("a published form is publicly reachable, fillable, and submits successfully
   await page.goto("/dashboard");
   const formCard = page.getByTestId("form-card").filter({ hasText: "Public Form" });
   await formCard.getByRole("button", { name: "Aktionen" }).click();
-  const href = await page
-    .getByRole("menuitem", { name: "Vorschau öffnen" })
-    .getAttribute("href");
+  const href = await page.getByRole("menuitem", { name: "Vorschau öffnen" }).getAttribute("href");
   expect(href).toBeTruthy();
   const publicUrl = href!.replace(/\?preview=1$/, "");
 

@@ -198,9 +198,11 @@ describe("builder store", () => {
       const { definition, addField, updateCondition } = useBuilderStore.getState();
       const pageId = definition!.pages[0]!.id;
       const fieldId = addField(pageId, "short_text");
-      const conditionId = useBuilderStore
-        .getState()
-        .addCondition({ logic: "and", rules: [{ fieldId, operator: "is_answered" }], action: "hide_field" });
+      const conditionId = useBuilderStore.getState().addCondition({
+        logic: "and",
+        rules: [{ fieldId, operator: "is_answered" }],
+        action: "hide_field",
+      });
 
       updateCondition(conditionId, { logic: "or" });
 
@@ -211,9 +213,11 @@ describe("builder store", () => {
       const { definition, addField, removeCondition } = useBuilderStore.getState();
       const pageId = definition!.pages[0]!.id;
       const fieldId = addField(pageId, "short_text");
-      const conditionId = useBuilderStore
-        .getState()
-        .addCondition({ logic: "and", rules: [{ fieldId, operator: "is_answered" }], action: "hide_field" });
+      const conditionId = useBuilderStore.getState().addCondition({
+        logic: "and",
+        rules: [{ fieldId, operator: "is_answered" }],
+        action: "hide_field",
+      });
 
       removeCondition(conditionId);
 
@@ -224,9 +228,11 @@ describe("builder store", () => {
       const { definition, addField } = useBuilderStore.getState();
       const pageId = definition!.pages[0]!.id;
       const fieldId = addField(pageId, "short_text");
-      useBuilderStore
-        .getState()
-        .addCondition({ logic: "and", rules: [{ fieldId, operator: "is_answered" }], action: "hide_field" });
+      useBuilderStore.getState().addCondition({
+        logic: "and",
+        rules: [{ fieldId, operator: "is_answered" }],
+        action: "hide_field",
+      });
 
       useBuilderStore.getState().undo();
 
@@ -262,19 +268,22 @@ describe("builder store", () => {
     });
 
     it("undoes a field removal and a field move", () => {
-      const { definition, addField, removeField, addPage, moveField } =
-        useBuilderStore.getState();
+      const { definition, addField, removeField, addPage, moveField } = useBuilderStore.getState();
       const pageAId = definition!.pages[0]!.id;
       const fieldId = addField(pageAId, "short_text");
       const pageBId = addPage();
 
       moveField(pageAId, pageBId, fieldId, 0);
       useBuilderStore.getState().undo();
-      expect(useBuilderStore.getState().definition!.pages.find((p) => p.id === pageAId)!.fields).toHaveLength(1);
+      expect(
+        useBuilderStore.getState().definition!.pages.find((p) => p.id === pageAId)!.fields,
+      ).toHaveLength(1);
 
       removeField(pageAId, fieldId);
       useBuilderStore.getState().undo();
-      expect(useBuilderStore.getState().definition!.pages.find((p) => p.id === pageAId)!.fields).toHaveLength(1);
+      expect(
+        useBuilderStore.getState().definition!.pages.find((p) => p.id === pageAId)!.fields,
+      ).toHaveLength(1);
     });
 
     it("undoes a page addition", () => {

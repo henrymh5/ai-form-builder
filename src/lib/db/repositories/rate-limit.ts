@@ -16,10 +16,7 @@ export interface RateLimitConfig {
   max: number;
 }
 
-export async function checkRateLimit(
-  config: RateLimitConfig,
-  identifier: string,
-): Promise<void> {
+export async function checkRateLimit(config: RateLimitConfig, identifier: string): Promise<void> {
   const windowStart = new Date(
     Math.floor(Date.now() / config.windowMs) * config.windowMs,
   ).toISOString();
@@ -38,11 +35,9 @@ export async function checkRateLimit(
   }
 
   if ((data ?? 0) > config.max) {
-    throw new AppError(
-      "RATE_LIMITED",
-      "Zu viele Anfragen. Bitte versuche es später erneut.",
-      { details: { retryAfterMs: config.windowMs } },
-    );
+    throw new AppError("RATE_LIMITED", "Zu viele Anfragen. Bitte versuche es später erneut.", {
+      details: { retryAfterMs: config.windowMs },
+    });
   }
 }
 

@@ -14,10 +14,7 @@ const STYLE_INSTRUCTION: Record<RewriteQuestionInput["style"], string> = {
  * requires resending the whole form to Claude (plan §11 "Teilweise
  * Neugenerierung").
  */
-export async function rewriteQuestion(
-  input: RewriteQuestionInput,
-  context: AiFunctionContext,
-) {
+export async function rewriteQuestion(input: RewriteQuestionInput, context: AiFunctionContext) {
   return runAiFunction(
     {
       name: "rewrite-question",

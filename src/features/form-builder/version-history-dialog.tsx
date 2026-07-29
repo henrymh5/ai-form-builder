@@ -3,12 +3,7 @@
 import { useState } from "react";
 import { History } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useBuilderStore } from "@/features/form-builder/builder-store";
 import {
   getFormVersionDefinitionAction,

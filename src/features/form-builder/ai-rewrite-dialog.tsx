@@ -122,18 +122,14 @@ export function AiRewriteDialog({
           </Select>
 
           <div className="space-y-1.5">
-            <p className="text-text-muted text-xs font-medium tracking-wide uppercase">
-              Bisher
-            </p>
+            <p className="text-text-muted text-xs font-medium tracking-wide uppercase">Bisher</p>
             <p className="border-border bg-surface-subtle rounded-md border p-3 text-sm">
               {currentLabel}
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <p className="text-text-muted text-xs font-medium tracking-wide uppercase">
-              Vorschlag
-            </p>
+            <p className="text-text-muted text-xs font-medium tracking-wide uppercase">Vorschlag</p>
             <div className="border-primary/30 bg-primary-subtle/30 min-h-14 rounded-md border p-3 text-sm">
               {isPending ? (
                 <Spinner className="size-4" />
@@ -147,7 +143,12 @@ export function AiRewriteDialog({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => void generate()} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void generate()}
+            disabled={isPending}
+          >
             Neu generieren
           </Button>
           <Button

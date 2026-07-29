@@ -183,9 +183,7 @@ export function PublicFormClient({
         onPageView={onPageView}
         onComplete={(answers) => void onComplete(answers)}
       />
-      {submitting ? (
-        <p className="text-text-muted text-center text-xs">Wird gesendet…</p>
-      ) : null}
+      {submitting ? <p className="text-text-muted text-center text-xs">Wird gesendet…</p> : null}
     </div>
   );
 }

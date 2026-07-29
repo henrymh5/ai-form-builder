@@ -3,10 +3,7 @@ import { runAiFunction, type AiFunctionContext } from "@/lib/ai/run-ai-function"
 import { generateOptionsOutputSchema, type GenerateOptionsInput } from "@/lib/ai/schemas";
 
 /** `generate-options:v1` (plan §11 "Antwortoptionen vorschlagen"). */
-export async function generateOptions(
-  input: GenerateOptionsInput,
-  context: AiFunctionContext,
-) {
+export async function generateOptions(input: GenerateOptionsInput, context: AiFunctionContext) {
   return runAiFunction(
     {
       name: "generate-options",

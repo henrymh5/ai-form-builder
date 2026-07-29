@@ -22,13 +22,7 @@ import { Plus, Trash2 } from "lucide-react";
  * the conditions UI exists — this panel already reads/writes the same
  * `Field` shape so nothing here changes when that lands.
  */
-export function PropertiesPanel({
-  workspaceId,
-  formId,
-}: {
-  workspaceId: string;
-  formId: string;
-}) {
+export function PropertiesPanel({ workspaceId, formId }: { workspaceId: string; formId: string }) {
   const definition = useBuilderStore((s) => s.definition);
   const selected = useBuilderStore((s) => s.selected);
   const updateField = useBuilderStore((s) => s.updateField);
@@ -75,7 +69,8 @@ export function PropertiesPanel({
   const field = page?.fields.find((f) => f.id === selected.fieldId);
   if (!field) return null;
 
-  const isDisplayOnly = field.type === "heading" || field.type === "paragraph" || field.type === "divider";
+  const isDisplayOnly =
+    field.type === "heading" || field.type === "paragraph" || field.type === "divider";
 
   return (
     <aside className="border-border bg-surface w-80 shrink-0 space-y-5 overflow-y-auto border-l p-4">
@@ -239,7 +234,7 @@ export function PropertiesPanel({
             </div>
           ) : null}
 
-          {(field.type === "rating" || field.type === "star_rating") ? (
+          {field.type === "rating" || field.type === "star_rating" ? (
             <div className="space-y-1.5">
               <Label htmlFor="prop-max-rating">Maximalwert</Label>
               <Input

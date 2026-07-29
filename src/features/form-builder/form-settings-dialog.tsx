@@ -3,12 +3,7 @@
 import { useState } from "react";
 import { Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -81,9 +76,7 @@ export function FormSettingsDialog() {
             <Switch
               id="allow-multiple"
               checked={settings.allowMultipleSubmissions}
-              onCheckedChange={(checked) =>
-                updateSettings({ allowMultipleSubmissions: checked })
-              }
+              onCheckedChange={(checked) => updateSettings({ allowMultipleSubmissions: checked })}
             />
           </div>
         </div>

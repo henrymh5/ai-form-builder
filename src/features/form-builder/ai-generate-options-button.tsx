@@ -94,7 +94,12 @@ export function AiGenerateOptionsButton({
         </div>
 
         <DialogFooter>
-          <Button type="button" variant="secondary" onClick={() => void generate()} disabled={isPending}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => void generate()}
+            disabled={isPending}
+          >
             Neu generieren
           </Button>
           <Button

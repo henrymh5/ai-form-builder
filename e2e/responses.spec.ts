@@ -59,7 +59,11 @@ test("owner can view, archive, and delete a submitted response", async ({ page, 
     timeout: 10000,
   });
 
-  await page.getByRole("cell", { name: /\d{2}\.\d{2}\.\d{4}/ }).first().getByRole("link").click();
+  await page
+    .getByRole("cell", { name: /\d{2}\.\d{2}\.\d{4}/ })
+    .first()
+    .getByRole("link")
+    .click();
   await expect(page).toHaveURL(/\/responses\/[0-9a-f-]+$/);
   await expect(page.getByText("Dein Name")).toBeVisible();
   await expect(page.getByText("Grace Hopper")).toBeVisible();

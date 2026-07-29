@@ -72,7 +72,11 @@ test("publishing v2 updates the public page while an old response still renders 
 
   // The old response's detail view still renders v1's original label and answer.
   await page.goto(`/forms/${formId}/responses`);
-  await page.getByRole("cell", { name: /\d{2}\.\d{2}\.\d{4}/ }).first().getByRole("link").click();
+  await page
+    .getByRole("cell", { name: /\d{2}\.\d{2}\.\d{4}/ })
+    .first()
+    .getByRole("link")
+    .click();
   await expect(page).toHaveURL(/\/responses\/[0-9a-f-]+$/);
   await expect(page.getByText("Frage V1")).toBeVisible();
   await expect(page.getByText("Antwort auf V1")).toBeVisible();

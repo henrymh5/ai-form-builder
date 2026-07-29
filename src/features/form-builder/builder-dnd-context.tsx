@@ -64,7 +64,9 @@ export function BuilderDndContext({ children }: { children: React.ReactNode }) {
         ?.fields.find((f) => f.id === location?.fieldId);
       if (field) setActiveLabel(<FieldCanvasPreview field={field} />);
     } else if (id.startsWith(PALETTE_PREFIX)) {
-      setActiveLabel(<span className="text-sm font-medium">{event.active.data.current?.label}</span>);
+      setActiveLabel(
+        <span className="text-sm font-medium">{event.active.data.current?.label}</span>,
+      );
     }
   }
 

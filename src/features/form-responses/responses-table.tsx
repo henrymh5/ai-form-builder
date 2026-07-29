@@ -91,10 +91,15 @@ export function ResponsesTable({
                   href={`/forms/${formId}/responses/${response.id}`}
                   className="hover:underline"
                   onClick={() => {
-                    if (!response.isRead) runResponseAction(markResponseReadAction, formId, response.id);
+                    if (!response.isRead)
+                      runResponseAction(markResponseReadAction, formId, response.id);
                   }}
                 >
-                  <span className={response.isRead ? "text-text-secondary" : "text-text-primary font-medium"}>
+                  <span
+                    className={
+                      response.isRead ? "text-text-secondary" : "text-text-primary font-medium"
+                    }
+                  >
                     {formatDateTime(response.submittedAt)}
                   </span>
                 </Link>
@@ -105,7 +110,9 @@ export function ResponsesTable({
                 </Badge>
               </td>
               <td className="text-text-secondary px-4 py-2">v{response.versionNumber}</td>
-              <td className="text-text-secondary px-4 py-2">{formatDuration(response.durationMs)}</td>
+              <td className="text-text-secondary px-4 py-2">
+                {formatDuration(response.durationMs)}
+              </td>
               <td className="px-4 py-2 text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -119,13 +126,17 @@ export function ResponsesTable({
                     </DropdownMenuItem>
                     {response.status === "archived" ? (
                       <DropdownMenuItem
-                        onSelect={() => runResponseAction(unarchiveResponseAction, formId, response.id)}
+                        onSelect={() =>
+                          runResponseAction(unarchiveResponseAction, formId, response.id)
+                        }
                       >
                         Wiederherstellen
                       </DropdownMenuItem>
                     ) : (
                       <DropdownMenuItem
-                        onSelect={() => runResponseAction(archiveResponseAction, formId, response.id)}
+                        onSelect={() =>
+                          runResponseAction(archiveResponseAction, formId, response.id)
+                        }
                       >
                         Archivieren
                       </DropdownMenuItem>

@@ -58,10 +58,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
       { scope: "public:submit:session", windowMs: 60_000, max: 5 },
       parsed.data.sessionId,
     );
-    await checkRateLimit(
-      { scope: "public:submit:form", windowMs: 60_000, max: 120 },
-      form.formId,
-    );
+    await checkRateLimit({ scope: "public:submit:form", windowMs: 60_000, max: 120 }, form.formId);
 
     await recordFormEvent({
       formId: form.formId,

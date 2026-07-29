@@ -127,7 +127,7 @@ function PageTab({
             e.stopPropagation();
             onRemove();
           }}
-          className="text-text-muted hover:text-error absolute -top-1 -right-1 hidden size-4 rounded-full bg-surface group-hover:block"
+          className="text-text-muted hover:text-error bg-surface absolute -top-1 -right-1 hidden size-4 rounded-full group-hover:block"
         >
           <X className="size-3.5" />
         </button>

@@ -68,7 +68,9 @@ export async function createBlankFormAction(
     const form = await createBlankForm(parsed.data.workspaceId, user.id, parsed.data.title);
     formId = form.id;
   } catch (error) {
-    return { error: isAppError(error) ? error.publicMessage : "Formular konnte nicht erstellt werden." };
+    return {
+      error: isAppError(error) ? error.publicMessage : "Formular konnte nicht erstellt werden.",
+    };
   }
 
   redirect(`/forms/${formId}`);
@@ -158,7 +160,9 @@ export async function publishFormAction(
     await publishFormRepo(parsed.data.formId, parsed.data.expectedRevision, user.id);
   } catch (error) {
     return {
-      error: isAppError(error) ? error.publicMessage : "Formular konnte nicht veröffentlicht werden.",
+      error: isAppError(error)
+        ? error.publicMessage
+        : "Formular konnte nicht veröffentlicht werden.",
     };
   }
 
@@ -216,7 +220,9 @@ export async function restoreFormVersionAction(
     return { newRevision: result.newRevision };
   } catch (error) {
     return {
-      error: isAppError(error) ? error.publicMessage : "Version konnte nicht wiederhergestellt werden.",
+      error: isAppError(error)
+        ? error.publicMessage
+        : "Version konnte nicht wiederhergestellt werden.",
     };
   }
 }

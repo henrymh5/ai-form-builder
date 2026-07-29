@@ -59,11 +59,9 @@ export async function POST(request: Request) {
     // same way a hand-built or duplicated form would be checked.
     const validation = validateFormDefinition(definition, logicEngineGraphAnalysis);
     if (!isValid(validation)) {
-      throw new AppError(
-        "AI_INVALID_OUTPUT",
-        "Die generierte Formularstruktur ist ungültig.",
-        { details: { errors: validation.errors } },
-      );
+      throw new AppError("AI_INVALID_OUTPUT", "Die generierte Formularstruktur ist ungültig.", {
+        details: { errors: validation.errors },
+      });
     }
 
     const supabase = await createUserClient();
@@ -72,7 +70,10 @@ export async function POST(request: Request) {
       .insert({
         workspace_id: workspace.id,
         title: definition.metadata.title,
-        slug: `${definition.metadata.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 60)}-${Date.now().toString(36)}`,
+        slug: `${definition.metadata.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .slice(0, 60)}-${Date.now().toString(36)}`,
         draft_definition: definition,
         schema_version: CURRENT_SCHEMA_VERSION,
         created_by: user.id,

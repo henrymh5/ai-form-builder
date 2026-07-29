@@ -24,7 +24,10 @@ export default function ResponsesLoading() {
           </div>
         </div>
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="border-border flex items-center gap-8 border-b px-4 py-3 last:border-0">
+          <div
+            key={i}
+            className="border-border flex items-center gap-8 border-b px-4 py-3 last:border-0"
+          >
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-5 w-24 rounded-full" />
             <Skeleton className="h-4 w-10" />

@@ -100,15 +100,19 @@ export function ResponseDetailView({
             Antwort vom {formatDateTime(response.submittedAt)}
           </h1>
           <div className="mt-2 flex items-center gap-2">
-            <Badge variant={STATUS_VARIANT[response.status]}>
-              {STATUS_LABEL[response.status]}
-            </Badge>
-            <span className="text-text-muted text-xs">Formularversion {response.versionNumber}</span>
+            <Badge variant={STATUS_VARIANT[response.status]}>{STATUS_LABEL[response.status]}</Badge>
+            <span className="text-text-muted text-xs">
+              Formularversion {response.versionNumber}
+            </span>
           </div>
         </div>
         <div className="flex gap-2">
           {response.status === "archived" ? (
-            <Button variant="secondary" size="sm" onClick={() => runAction(unarchiveResponseAction)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => runAction(unarchiveResponseAction)}
+            >
               Wiederherstellen
             </Button>
           ) : (

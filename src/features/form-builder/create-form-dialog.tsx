@@ -82,7 +82,7 @@ function TabButton({
         "flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium",
         active
           ? "border-primary text-primary-text"
-          : "text-text-secondary border-transparent hover:text-text-primary",
+          : "text-text-secondary hover:text-text-primary border-transparent",
       )}
     >
       {children}

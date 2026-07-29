@@ -6,13 +6,7 @@ import { AppError, isAppError } from "@/lib/errors";
 
 const bodySchema = z.object({
   sessionId: z.string().uuid(),
-  eventType: z.enum([
-    "start",
-    "page_view",
-    "field_interaction",
-    "submit_attempt",
-    "abandon",
-  ]),
+  eventType: z.enum(["start", "page_view", "field_interaction", "submit_attempt", "abandon"]),
   pageId: z.string().max(64).optional(),
   fieldId: z.string().max(64).optional(),
 });

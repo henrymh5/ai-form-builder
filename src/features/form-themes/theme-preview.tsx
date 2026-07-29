@@ -20,7 +20,8 @@ export function ThemePreview({ theme }: { theme: Theme }) {
       style={{
         backgroundColor: theme.colorBackground,
         color: theme.colorText,
-        fontFamily: theme.fontFamily === "inter" ? "var(--font-inter), sans-serif" : "system-ui, sans-serif",
+        fontFamily:
+          theme.fontFamily === "inter" ? "var(--font-inter), sans-serif" : "system-ui, sans-serif",
         fontSize: `${theme.fontSizeBase}px`,
         maxWidth: theme.containerWidth,
         padding: SPACING_PADDING[theme.spacing],

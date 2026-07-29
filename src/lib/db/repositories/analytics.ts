@@ -75,7 +75,9 @@ export async function getAnalyticsOverview(formId: string): Promise<AnalyticsOve
     .filter((s) => s.completed_at)
     .map((s) => new Date(s.completed_at!).getTime() - new Date(s.started_at).getTime());
   const avgDurationMs =
-    durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+    durations.length > 0
+      ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+      : null;
 
   return {
     views: views ?? 0,

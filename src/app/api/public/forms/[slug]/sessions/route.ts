@@ -37,10 +37,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
     const parsed = bodySchema.safeParse(rawBody ? JSON.parse(rawBody) : {});
     if (!parsed.success) throw new AppError("VALIDATION_ERROR", "Ungültige Eingabe.");
 
-    await checkRateLimit(
-      { scope: "public:session:form", windowMs: 60_000, max: 60 },
-      form.formId,
-    );
+    await checkRateLimit({ scope: "public:session:form", windowMs: 60_000, max: 60 }, form.formId);
 
     const userAgent = request.headers.get("user-agent") ?? "";
     const deviceType = /mobile|android|iphone/i.test(userAgent) ? "mobile" : "desktop";

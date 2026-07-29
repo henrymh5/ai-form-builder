@@ -52,7 +52,13 @@ describe("diffFormDefinitions", () => {
 
     const diff = diffFormDefinitions(before, after);
     expect(diff.fieldChanges).toEqual([
-      { kind: "label_changed", fieldId: field.id, label: "Neuer Name", from: "Name", to: "Neuer Name" },
+      {
+        kind: "label_changed",
+        fieldId: field.id,
+        label: "Neuer Name",
+        from: "Name",
+        to: "Neuer Name",
+      },
     ]);
   });
 

@@ -20,7 +20,12 @@ import {
 } from "@/components/ui/select";
 import { useBuilderStore } from "@/features/form-builder/builder-store";
 import { isAnswerableField, hasOptions, type Field } from "@/lib/form-schema/fields";
-import { OPERATORS_BY_FIELD_TYPE, type Condition, type ConditionRule, type Operator } from "@/lib/form-schema/conditions";
+import {
+  OPERATORS_BY_FIELD_TYPE,
+  type Condition,
+  type ConditionRule,
+  type Operator,
+} from "@/lib/form-schema/conditions";
 import { formDefinitionSchema } from "@/lib/form-schema/schema";
 import { validateFormDefinition } from "@/lib/form-schema/validate";
 import { logicEngineGraphAnalysis } from "@/lib/logic-engine/wire-validation";
@@ -146,13 +151,7 @@ export function ConditionsPanel() {
   );
 }
 
-function ConditionEditor({
-  condition,
-  onRemove,
-}: {
-  condition: Condition;
-  onRemove: () => void;
-}) {
+function ConditionEditor({ condition, onRemove }: { condition: Condition; onRemove: () => void }) {
   const definition = useBuilderStore((s) => s.definition)!;
   const updateCondition = useBuilderStore((s) => s.updateCondition);
   const fields = allAnswerableFields(definition);
@@ -184,7 +183,9 @@ function ConditionEditor({
           <span>Wenn</span>
           <Select
             value={condition.logic}
-            onValueChange={(value) => updateCondition(condition.id, { logic: value as "and" | "or" })}
+            onValueChange={(value) =>
+              updateCondition(condition.id, { logic: value as "and" | "or" })
+            }
           >
             <SelectTrigger className="h-8 w-24">
               <SelectValue />
@@ -377,7 +378,9 @@ function RuleRow({
                   ? "number"
                   : "text"
             }
-            value={typeof rule.value === "string" || typeof rule.value === "number" ? rule.value : ""}
+            value={
+              typeof rule.value === "string" || typeof rule.value === "number" ? rule.value : ""
+            }
             onChange={(e) =>
               onChange({
                 value:

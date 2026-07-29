@@ -55,7 +55,8 @@ export function toFormDefinition(output: GenerateFormOutput): FormDefinition {
       aiField.type === "multiple_choice" ||
       aiField.type === "dropdown"
     ) {
-      const rawOptions = aiField.options && aiField.options.length > 0 ? aiField.options : ["Option 1", "Option 2"];
+      const rawOptions =
+        aiField.options && aiField.options.length > 0 ? aiField.options : ["Option 1", "Option 2"];
       return {
         ...base,
         type: aiField.type,

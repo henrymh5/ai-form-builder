@@ -1,7 +1,11 @@
 import "server-only";
 import { formDefinitionSchema } from "@/lib/form-schema/schema";
 import { validateFormDefinition, isValid } from "@/lib/form-schema/validate";
-import { detectCycles, findPathsWithoutEnding, findUnreachablePages } from "@/lib/logic-engine/graph";
+import {
+  detectCycles,
+  findPathsWithoutEnding,
+  findUnreachablePages,
+} from "@/lib/logic-engine/graph";
 import { AppError } from "@/lib/errors";
 import { createUserClient } from "@/lib/db/user-client";
 import { getForm } from "@/lib/db/repositories/forms";
@@ -25,7 +29,10 @@ export async function publishForm(
 
   const shapeResult = formDefinitionSchema.safeParse(form.draftDefinition);
   if (!shapeResult.success) {
-    throw new AppError("VALIDATION_ERROR", "Der Formularentwurf ist ungültig und kann nicht veröffentlicht werden.");
+    throw new AppError(
+      "VALIDATION_ERROR",
+      "Der Formularentwurf ist ungültig und kann nicht veröffentlicht werden.",
+    );
   }
 
   const validation = validateFormDefinition(shapeResult.data, {
@@ -56,7 +63,9 @@ export async function publishForm(
         "Der Entwurf wurde zwischenzeitlich geändert. Bitte neu laden und erneut veröffentlichen.",
       );
     }
-    throw new AppError("FORBIDDEN", "Formular konnte nicht veröffentlicht werden.", { cause: error });
+    throw new AppError("FORBIDDEN", "Formular konnte nicht veröffentlicht werden.", {
+      cause: error,
+    });
   }
 
   const row = data?.[0];

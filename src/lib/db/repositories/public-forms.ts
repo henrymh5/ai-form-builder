@@ -74,13 +74,7 @@ export async function recordFormEvent(params: {
   formVersionId: string;
   sessionId: string;
   eventType:
-    | "view"
-    | "start"
-    | "page_view"
-    | "field_interaction"
-    | "submit_attempt"
-    | "submit"
-    | "abandon";
+    "view" | "start" | "page_view" | "field_interaction" | "submit_attempt" | "submit" | "abandon";
   pageId?: string;
   fieldId?: string;
 }): Promise<void> {

@@ -17,9 +17,7 @@ import type { FormDefinition, Page } from "@/lib/form-schema/schema";
  */
 
 export type SelectedElement =
-  | { kind: "field"; pageId: string; fieldId: string }
-  | { kind: "page"; pageId: string }
-  | null;
+  { kind: "field"; pageId: string; fieldId: string } | { kind: "page"; pageId: string } | null;
 
 const MAX_HISTORY = 50;
 
@@ -182,7 +180,10 @@ export const useBuilderStore = create<BuilderState>((set, get) => {
   }
 
   /** Applies `pages` as the new definition, snapshotting the current one for undo. */
-  function commit(pages: Page[], extra?: Partial<Pick<BuilderState, "selected" | "currentPageId">>) {
+  function commit(
+    pages: Page[],
+    extra?: Partial<Pick<BuilderState, "selected" | "currentPageId">>,
+  ) {
     const { definition } = get();
     if (!definition) return;
     commitDefinition(withPages(definition, pages), extra);

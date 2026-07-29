@@ -71,10 +71,7 @@ export async function runAiFunction<Output extends z.ZodType>(
       // the JSON schema; `parsed_output` can still be null if parsing failed
       // (e.g. `max_tokens` truncation) — treat that as an invalid-output error.
       if (response.parsed_output === null) {
-        throw new AppError(
-          "AI_INVALID_OUTPUT",
-          "Die KI-Antwort konnte nicht verarbeitet werden.",
-        );
+        throw new AppError("AI_INVALID_OUTPUT", "Die KI-Antwort konnte nicht verarbeitet werden.");
       }
 
       await logAiUsage({

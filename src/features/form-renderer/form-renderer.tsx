@@ -104,7 +104,11 @@ export function FormRenderer({ definition, mode, onComplete, onPageView }: FormR
     const merged = { ...allAnswers, ...pageValues };
     setAllAnswers(merged);
 
-    const next = getNextStep(definition, currentPage!.id, answersForCurrentPage(definition, merged));
+    const next = getNextStep(
+      definition,
+      currentPage!.id,
+      answersForCurrentPage(definition, merged),
+    );
     if (next.kind === "ending") {
       setEndingId(next.endingId);
       onComplete?.(merged, next.endingId);

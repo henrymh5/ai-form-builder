@@ -7,7 +7,8 @@ import type { FormDefinition } from "./schema";
  * current draft and an old published version is meaningful even after
  * reordering. Pure, no React/IO.
  */
-export type FieldChangeKind = "added" | "removed" | "label_changed" | "required_changed" | "type_changed";
+export type FieldChangeKind =
+  "added" | "removed" | "label_changed" | "required_changed" | "type_changed";
 
 export interface FieldChange {
   kind: FieldChangeKind;
@@ -81,11 +82,7 @@ export function diffFormDefinitions(before: FormDefinition, after: FormDefinitio
         to: field.label,
       });
     }
-    if (
-      "required" in previous &&
-      "required" in field &&
-      previous.required !== field.required
-    ) {
+    if ("required" in previous && "required" in field && previous.required !== field.required) {
       fieldChanges.push({
         kind: "required_changed",
         fieldId: id,

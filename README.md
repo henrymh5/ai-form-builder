@@ -34,6 +34,7 @@ e2e/                         Playwright-End-to-End-Tests
 ```
 
 **Kernprinzipien:**
+
 - **Ein Formschema, ein Renderer.** Builder, Vorschau, Testmodus und öffentliches Formular nutzen exakt dieselbe `FormRenderer`-Komponente und dieselbe Validierungslogik — nie zwei Implementierungen.
 - **Unveränderliche Versionen.** Veröffentlichungen werden als Snapshot in `form_versions` gespeichert (nie mutiert); Entwürfe leben getrennt als JSONB-Spalte auf `forms`. Antworten werden immer gegen ihre eigene Version gerendert.
 - **RLS als harte Grenze.** Jede Tenant-Tabelle hat Row-Level-Security-Policies in derselben Migration wie die Tabelle selbst. Anonyme Formularbesucher haben keinerlei direkten Tabellenzugriff — alle öffentlichen Schreib-/Lesepfade laufen über Route Handler mit serverseitiger Validierung.
