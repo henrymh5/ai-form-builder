@@ -27,13 +27,9 @@ function formatDateTime(iso: string): string {
 }
 
 export function RunsTable({
-  formId,
-  workflowId,
   runs,
   stepsByRunId,
 }: {
-  formId: string;
-  workflowId: string;
   runs: WorkflowRunSummary[];
   stepsByRunId: Record<string, WorkflowRunStepRecord[]>;
 }) {
@@ -46,8 +42,6 @@ export function RunsTable({
     setRetryError(null);
     const formData = new FormData();
     formData.set("runId", runId);
-    formData.set("workflowId", workflowId);
-    formData.set("formId", formId);
     const result = await retryRunAction(formData);
     if (!result.ok) setRetryError(result.error ?? "Erneuter Versuch fehlgeschlagen.");
     setRetrying(null);

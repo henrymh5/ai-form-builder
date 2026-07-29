@@ -8,6 +8,8 @@ import { AppError } from "@/lib/errors";
 import { toWorkflowDefinition } from "./convert-workflow";
 import type { GenerateWorkflowOutput } from "./workflow-schemas";
 
+const FORM_ID = "11111111-1111-4111-8111-111111111111";
+
 function formWithFields(): FormDefinition {
   const form = createEmptyFormDefinition("Testformular");
   form.pages[0]!.fields = [
@@ -41,7 +43,7 @@ describe("toWorkflowDefinition", () => {
       edges: [{ from: "n1", to: "n2", branch: "true" }],
     };
 
-    const definition = toWorkflowDefinition(output, form);
+    const definition = toWorkflowDefinition(output, form, FORM_ID);
     const parsed = workflowDefinitionSchema.safeParse(definition);
     expect(parsed.success).toBe(true);
 
@@ -72,6 +74,21 @@ describe("toWorkflowDefinition", () => {
     ).toBe(true);
   });
 
+  it("sets the trigger's formIds to the single form the AI generated against", () => {
+    const form = formWithFields();
+    const output: GenerateWorkflowOutput = {
+      name: "Test",
+      nodes: [{ ref: "n1", type: "responseAction", action: "mark_read" }],
+      edges: [],
+    };
+    const definition = toWorkflowDefinition(output, form, FORM_ID);
+    const trigger = definition.nodes.find((n) => n.type === "trigger")!;
+    expect(trigger.type).toBe("trigger");
+    if (trigger.type === "trigger") {
+      expect(trigger.config.formIds).toEqual([FORM_ID]);
+    }
+  });
+
   it("assigns unique, real IDs — never reusing the AI's local refs", () => {
     const form = formWithFields();
     const output: GenerateWorkflowOutput = {
@@ -79,7 +96,7 @@ describe("toWorkflowDefinition", () => {
       nodes: [{ ref: "n1", type: "responseAction", action: "mark_read" }],
       edges: [],
     };
-    const definition = toWorkflowDefinition(output, form);
+    const definition = toWorkflowDefinition(output, form, FORM_ID);
     const actionNode = definition.nodes.find((n) => n.type === "responseAction")!;
     expect(actionNode.id).not.toBe("n1");
     expect(actionNode.id.startsWith("wfn_")).toBe(true);
@@ -95,7 +112,7 @@ describe("toWorkflowDefinition", () => {
       ],
       edges: [{ from: "n1", to: "n2" }],
     };
-    const definition = toWorkflowDefinition(output, form);
+    const definition = toWorkflowDefinition(output, form, FORM_ID);
     // The second node should be laid out below the first (top-down dagre layout).
     const [first, second] = definition.nodes
       .filter((n) => n.type === "responseAction")
@@ -117,7 +134,7 @@ describe("toWorkflowDefinition", () => {
       ],
       edges: [],
     };
-    expect(() => toWorkflowDefinition(output, form)).toThrow(AppError);
+    expect(() => toWorkflowDefinition(output, form, FORM_ID)).toThrow(AppError);
   });
 
   it("throws AI_INVALID_OUTPUT when an email submitter field label is unknown", () => {
@@ -136,7 +153,7 @@ describe("toWorkflowDefinition", () => {
       ],
       edges: [],
     };
-    expect(() => toWorkflowDefinition(output, form)).toThrow(AppError);
+    expect(() => toWorkflowDefinition(output, form, FORM_ID)).toThrow(AppError);
   });
 
   it("passes domain validation with no errors for a well-formed generated workflow", () => {
@@ -146,8 +163,10 @@ describe("toWorkflowDefinition", () => {
       nodes: [{ ref: "n1", type: "responseAction", action: "mark_read" }],
       edges: [],
     };
-    const definition = toWorkflowDefinition(output, form);
-    const result = validateWorkflowDefinition(definition, form);
+    const definition = toWorkflowDefinition(output, form, FORM_ID);
+    const result = validateWorkflowDefinition(definition, [
+      { id: FORM_ID, title: "Testformular", definition: form },
+    ]);
     expect(isWorkflowValid(result)).toBe(true);
   });
 });

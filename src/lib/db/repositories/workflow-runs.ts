@@ -18,24 +18,26 @@ export type WorkflowRunStepStatus = "running" | "succeeded" | "failed" | "skippe
 
 export interface EnabledWorkflow {
   id: string;
-  formId: string;
   definition: WorkflowDefinition;
 }
 
-/** Fetches enabled workflows for a form, for the enqueue step after a submission. */
+/**
+ * Fetches enabled workflows whose trigger is attached to this form, for the
+ * enqueue step after a submission — joins through workflow_form_triggers
+ * (0013) since a workflow can be triggered by multiple forms.
+ */
 export async function listEnabledWorkflowsForForm(formId: string): Promise<EnabledWorkflow[]> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("workflows")
-    .select("id, form_id, definition")
-    .eq("form_id", formId)
+    .select("id, definition, workflow_form_triggers!inner(form_id)")
+    .eq("workflow_form_triggers.form_id", formId)
     .eq("status", "enabled");
 
   if (error || !data) return [];
 
   return data.map((w) => ({
     id: w.id,
-    formId: w.form_id,
     definition: w.definition as unknown as WorkflowDefinition,
   }));
 }
@@ -388,6 +390,17 @@ export async function getResponseAnswersForRun(
       value: a.value,
     })),
   };
+}
+
+/**
+ * Resolves the form a response was submitted to — used to derive `formId`
+ * for enqueue/test-run/retry server-side instead of trusting a
+ * client-submitted pairing between a chosen response and a form.
+ */
+export async function getResponseFormId(responseId: string): Promise<string | null> {
+  const supabase = createServiceClient();
+  const { data } = await supabase.from("responses").select("form_id").eq("id", responseId).maybeSingle();
+  return data?.form_id ?? null;
 }
 
 export interface RunForResponse {

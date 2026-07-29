@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { LayoutDashboard, FileText, Users } from "lucide-react";
+import { LayoutDashboard, FileText, Users, Workflow } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/forms", label: "Formulare", icon: FileText },
+  { href: "/workflows", label: "Workflows", icon: Workflow },
   { href: "/workspace", label: "Workspace", icon: Users },
 ] as const;
 
@@ -17,12 +18,16 @@ const NAV_ITEMS = [
  */
 const BUILDER_ROUTE = /^\/forms\/[0-9a-f-]{36}$/i;
 
+/** Matches the standalone workflow editor (`/workflows/<uuid>`) but not its `/runs` sub-page. */
+const WORKFLOW_EDITOR_ROUTE = /^\/workflows\/[0-9a-f-]{36}$/i;
+
 /** Compact sidebar navigation — Style-Guide §23.10/§23.5. */
 export function AppNavigation() {
   const pathname = usePathname();
 
-  // The builder is a full-width workspace (plan §23.9) — it owns its own back link instead.
-  if (BUILDER_ROUTE.test(pathname)) return null;
+  // The builder and workflow editor are full-width workspaces (plan §23.9)
+  // — they own their own back link instead.
+  if (BUILDER_ROUTE.test(pathname) || WORKFLOW_EDITOR_ROUTE.test(pathname)) return null;
 
   return (
     <nav className="border-border bg-surface flex w-(--layout-sidebar-width) shrink-0 flex-col gap-1 border-r p-3">

@@ -3,12 +3,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 /** Instant loading state for the workflows list while it streams in. */
 export default function WorkflowsLoading() {
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="space-y-1.5">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-8 w-36" />
-        </div>
+        <Skeleton className="h-8 w-36" />
         <Skeleton className="h-9 w-36" />
       </div>
 

@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { startTestRunAction } from "@/features/workflow-builder/actions/run-actions";
-import type { ResponseSummary } from "@/lib/db/repositories/responses";
 import { useWorkflowEditorStore } from "./workflow-editor-store";
 
 function formatDateTime(iso: string): string {
@@ -25,20 +24,27 @@ function formatDateTime(iso: string): string {
   });
 }
 
+export interface TestRunResponseOption {
+  id: string;
+  formTitle: string;
+  submittedAt: string;
+}
+
 /**
  * Dry-run test using a real, already-submitted response — actions are
  * simulated by the engine (RunContext.dryRun), so this never sends a real
  * email/webhook (see workflow-engine/actions/*). Requires a saved
  * definition, since the run executes the server's copy, not unsaved edits.
+ * `responses` spans every one of the trigger's currently-saved forms (0013:
+ * a workflow can be triggered by multiple forms) — formId for the run is
+ * resolved server-side from the chosen response, never trusted client-side.
  */
 export function TestRunDialog({
-  formId,
   workflowId,
   responses,
 }: {
-  formId: string;
   workflowId: string;
-  responses: ResponseSummary[];
+  responses: TestRunResponseOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [selectedResponseId, setSelectedResponseId] = useState<string | undefined>(responses[0]?.id);
@@ -53,7 +59,6 @@ export function TestRunDialog({
     setResult(null);
     const outcome = await startTestRunAction({
       workflowId,
-      formId,
       responseId: selectedResponseId,
       definition: getDefinition(),
     });
@@ -81,7 +86,8 @@ export function TestRunDialog({
 
         {responses.length === 0 ? (
           <p className="text-text-secondary text-sm">
-            Es gibt noch keine Antworten für dieses Formular, mit denen getestet werden kann.
+            Es gibt noch keine Antworten in den ausgewählten Trigger-Formularen, mit denen getestet
+            werden kann.
           </p>
         ) : (
           <div className="space-y-4">
@@ -92,7 +98,7 @@ export function TestRunDialog({
               <SelectContent>
                 {responses.map((response) => (
                   <SelectItem key={response.id} value={response.id}>
-                    {formatDateTime(response.submittedAt)}
+                    {response.formTitle} — {formatDateTime(response.submittedAt)}
                   </SelectItem>
                 ))}
               </SelectContent>

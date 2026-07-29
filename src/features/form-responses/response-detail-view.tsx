@@ -149,7 +149,7 @@ export function ResponseDetailView({
         })}
       </Card>
 
-      <TriggeredWorkflowsCard formId={formId} runs={workflowRuns} />
+      <TriggeredWorkflowsCard runs={workflowRuns} />
 
       <Card className="space-y-3">
         <CardTitle>Notiz</CardTitle>

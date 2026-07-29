@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { RunsTable } from "@/features/workflow-builder/runs-table";
 
 interface RunsPageProps {
-  params: Promise<{ id: string; workflowId: string }>;
+  params: Promise<{ workflowId: string }>;
   searchParams: Promise<{ page?: string }>;
 }
 
@@ -18,10 +18,10 @@ const PAGE_SIZE = 20;
 
 /** Run history for a workflow: status, attempt, error, expandable step log, retry. */
 export default async function RunsPage({ params, searchParams }: RunsPageProps) {
-  const { id, workflowId } = await params;
+  const { workflowId } = await params;
   const search = await searchParams;
   const workflow = await getWorkflow(workflowId);
-  if (!workflow || workflow.formId !== id) notFound();
+  if (!workflow) notFound();
 
   const page = Math.max(1, Number(search.page) || 1);
   const { runs, total } = await listWorkflowRuns(workflowId, { page, pageSize: PAGE_SIZE });
@@ -35,12 +35,9 @@ export default async function RunsPage({ params, searchParams }: RunsPageProps) 
   );
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-6">
+    <div className="space-y-6">
       <div>
-        <Link
-          href={`/forms/${id}/workflows`}
-          className="text-text-secondary hover:text-text-primary text-sm"
-        >
+        <Link href="/workflows" className="text-text-secondary hover:text-text-primary text-sm">
           ← Workflows
         </Link>
         <h1 className="text-text-primary text-2xl font-semibold">Läufe: {workflow.name}</h1>
@@ -55,7 +52,7 @@ export default async function RunsPage({ params, searchParams }: RunsPageProps) 
           </p>
         </Card>
       ) : (
-        <RunsTable formId={id} workflowId={workflowId} runs={runs} stepsByRunId={stepsByRunId} />
+        <RunsTable runs={runs} stepsByRunId={stepsByRunId} />
       )}
 
       {totalPages > 1 ? (
@@ -66,7 +63,7 @@ export default async function RunsPage({ params, searchParams }: RunsPageProps) 
           <div className="flex gap-2">
             {page > 1 ? (
               <Link
-                href={`/forms/${id}/workflows/${workflowId}/runs?page=${page - 1}`}
+                href={`/workflows/${workflowId}/runs?page=${page - 1}`}
                 className="text-primary-text hover:underline"
               >
                 Zurück
@@ -74,7 +71,7 @@ export default async function RunsPage({ params, searchParams }: RunsPageProps) 
             ) : null}
             {page < totalPages ? (
               <Link
-                href={`/forms/${id}/workflows/${workflowId}/runs?page=${page + 1}`}
+                href={`/workflows/${workflowId}/runs?page=${page + 1}`}
                 className="text-primary-text hover:underline"
               >
                 Weiter

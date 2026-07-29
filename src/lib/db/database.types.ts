@@ -483,6 +483,39 @@ export type Database = {
           },
         ];
       };
+      workflow_form_triggers: {
+        Row: {
+          created_at: string;
+          form_id: string;
+          workflow_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          form_id: string;
+          workflow_id: string;
+        };
+        Update: {
+          created_at?: string;
+          form_id?: string;
+          workflow_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workflow_form_triggers_form_id_fkey";
+            columns: ["form_id"];
+            isOneToOne: false;
+            referencedRelation: "forms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "workflow_form_triggers_workflow_id_fkey";
+            columns: ["workflow_id"];
+            isOneToOne: false;
+            referencedRelation: "workflows";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       workflow_run_steps: {
         Row: {
           error_message: string | null;
@@ -611,44 +644,44 @@ export type Database = {
           created_at: string;
           created_by: string | null;
           definition: Json;
-          form_id: string;
           id: string;
           name: string;
           schema_version: number;
           status: string;
           updated_at: string;
           webhook_secret: string | null;
+          workspace_id: string;
         };
         Insert: {
           created_at?: string;
           created_by?: string | null;
           definition: Json;
-          form_id: string;
           id?: string;
           name: string;
           schema_version?: number;
           status?: string;
           updated_at?: string;
           webhook_secret?: string | null;
+          workspace_id: string;
         };
         Update: {
           created_at?: string;
           created_by?: string | null;
           definition?: Json;
-          form_id?: string;
           id?: string;
           name?: string;
           schema_version?: number;
           status?: string;
           updated_at?: string;
           webhook_secret?: string | null;
+          workspace_id?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "workflows_form_id_fkey";
-            columns: ["form_id"];
+            foreignKeyName: "workflows_workspace_id_fkey";
+            columns: ["workspace_id"];
             isOneToOne: false;
-            referencedRelation: "forms";
+            referencedRelation: "workspaces";
             referencedColumns: ["id"];
           },
         ];

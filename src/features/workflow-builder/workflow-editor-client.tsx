@@ -7,25 +7,25 @@ import { NodePalette } from "./node-palette";
 import { WorkflowCanvas } from "./workflow-canvas";
 import { WorkflowEditorToolbar } from "./workflow-editor-toolbar";
 import { useWorkflowEditorStore } from "./workflow-editor-store";
-import type { ResponseSummary } from "@/lib/db/repositories/responses";
+import type { TestRunResponseOption } from "./test-run-dialog";
 import type { WorkflowRecord } from "@/lib/db/repositories/workflows";
-import type { FormDefinition } from "@/lib/form-schema/schema";
+import type { WorkflowFormRef } from "@/lib/workflow-schema/validate";
 
 export function WorkflowEditorClient({
   workflow,
-  form,
+  forms,
   webhookSecret,
   responses,
 }: {
   workflow: WorkflowRecord;
-  form: FormDefinition;
+  forms: WorkflowFormRef[];
   webhookSecret: string | null;
-  responses: ResponseSummary[];
+  responses: TestRunResponseOption[];
 }) {
   const load = useWorkflowEditorStore((s) => s.load);
 
   useEffect(() => {
-    load({ workflowId: workflow.id, formId: workflow.formId, definition: workflow.definition, form });
+    load({ workflowId: workflow.id, workspaceId: workflow.workspaceId, definition: workflow.definition, forms });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: load once per workflow id, not on every store re-render
   }, [workflow.id]);
 
@@ -35,7 +35,7 @@ export function WorkflowEditorClient({
       className="flex h-[calc(100vh-var(--layout-header-height))] min-w-0 flex-col"
     >
       <WorkflowEditorToolbar
-        formId={workflow.formId}
+        workspaceId={workflow.workspaceId}
         workflowId={workflow.id}
         name={workflow.name}
         initialStatus={workflow.status}

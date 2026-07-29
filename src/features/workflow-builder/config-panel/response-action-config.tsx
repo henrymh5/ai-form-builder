@@ -3,19 +3,19 @@
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { FormDefinition } from "@/lib/form-schema/schema";
 import type { WorkflowNode } from "@/lib/workflow-schema/schema";
+import type { WorkflowFormRef } from "@/lib/workflow-schema/validate";
 import { FieldPicker, insertFieldPlaceholder } from "./field-picker";
 
 type ResponseActionConfig = Extract<WorkflowNode, { type: "responseAction" }>["config"];
 
 export function ResponseActionConfigForm({
   config,
-  form,
+  forms,
   onChange,
 }: {
   config: ResponseActionConfig;
-  form: FormDefinition;
+  forms: WorkflowFormRef[];
   onChange: (config: ResponseActionConfig) => void;
 }) {
   return (
@@ -65,7 +65,7 @@ export function ResponseActionConfigForm({
           <div className="flex items-center justify-between">
             <Label htmlFor="note-text">Notiztext</Label>
             <FieldPicker
-              form={form}
+              forms={forms}
               value={undefined}
               placeholder="Platzhalter einfügen"
               onChange={(fieldId) =>

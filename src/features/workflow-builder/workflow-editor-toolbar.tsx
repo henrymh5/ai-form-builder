@@ -10,22 +10,21 @@ import {
   toggleWorkflowStatusAction,
 } from "@/features/workflow-builder/actions/workflow-actions";
 import { useWorkflowEditorStore } from "./workflow-editor-store";
-import { TestRunDialog } from "./test-run-dialog";
-import type { ResponseSummary } from "@/lib/db/repositories/responses";
+import { TestRunDialog, type TestRunResponseOption } from "./test-run-dialog";
 import type { WorkflowStatus } from "@/lib/db/repositories/workflows";
 
 export function WorkflowEditorToolbar({
-  formId,
+  workspaceId,
   workflowId,
   name,
   initialStatus,
   responses,
 }: {
-  formId: string;
+  workspaceId: string;
   workflowId: string;
   name: string;
   initialStatus: WorkflowStatus;
-  responses: ResponseSummary[];
+  responses: TestRunResponseOption[];
 }) {
   const dirty = useWorkflowEditorStore((s) => s.dirty);
   const saving = useWorkflowEditorStore((s) => s.saving);
@@ -44,7 +43,7 @@ export function WorkflowEditorToolbar({
 
   async function handleSave() {
     markSaved(true);
-    const result = await saveWorkflowAction({ workflowId, formId, definition: getDefinition() });
+    const result = await saveWorkflowAction({ workflowId, definition: getDefinition() });
     if (result.ok) {
       commitSaved();
     } else {
@@ -58,7 +57,12 @@ export function WorkflowEditorToolbar({
     setTogglePending(true);
     // Enabling requires the latest saved definition — save first if dirty.
     if (dirty) await handleSave();
-    const result = await toggleWorkflowStatusAction(workflowId, formId, nextStatus, getDefinition());
+    const result = await toggleWorkflowStatusAction(
+      workflowId,
+      workspaceId,
+      nextStatus,
+      getDefinition(),
+    );
     setStatus(result.status);
     if (result.error) setToggleError(result.error);
     setTogglePending(false);
@@ -68,7 +72,7 @@ export function WorkflowEditorToolbar({
     <div className="border-border bg-surface flex min-h-14 w-full shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-4 py-2">
       <div className="flex min-w-0 items-center gap-3">
         <Link
-          href={`/forms/${formId}/workflows`}
+          href="/workflows"
           className="text-text-secondary hover:text-text-primary flex shrink-0 items-center gap-1 text-sm"
         >
           <ArrowLeft className="size-4" />
@@ -91,12 +95,12 @@ export function WorkflowEditorToolbar({
 
       <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
         <Link
-          href={`/forms/${formId}/workflows/${workflowId}/runs`}
+          href={`/workflows/${workflowId}/runs`}
           className="text-text-secondary hover:text-text-primary text-sm"
         >
           Läufe
         </Link>
-        <TestRunDialog formId={formId} workflowId={workflowId} responses={responses} />
+        <TestRunDialog workflowId={workflowId} responses={responses} />
         {toggleError ? <span className="text-error text-xs">{toggleError}</span> : null}
         <div className="flex items-center gap-2">
           <span className="text-text-secondary text-sm">Aktiviert</span>

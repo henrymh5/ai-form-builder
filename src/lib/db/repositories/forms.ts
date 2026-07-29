@@ -288,3 +288,39 @@ export async function softDeleteForm(formId: string): Promise<void> {
     throw new AppError("FORBIDDEN", "Formular konnte nicht gelöscht werden.", { cause: error });
   }
 }
+
+export interface FormOptionWithDefinition {
+  id: string;
+  title: string;
+  definition: FormDefinition;
+}
+
+/**
+ * Lightweight form list with draft definitions — feeds the workflow
+ * editor's trigger form-picker checkboxes, the multi-form field-reference
+ * validation, and the FieldPicker's union-of-fields resolution (workflows
+ * are workspace-scoped, not form-scoped, since 0013).
+ */
+export async function listFormOptionsWithDefinitions(
+  workspaceId: string,
+): Promise<FormOptionWithDefinition[]> {
+  const supabase = await createUserClient();
+  const { data, error } = await supabase
+    .from("forms")
+    .select("id, title, draft_definition")
+    .eq("workspace_id", workspaceId)
+    .is("deleted_at", null)
+    .order("title", { ascending: true });
+
+  if (error) {
+    throw new AppError("INTERNAL_ERROR", "Formulare konnten nicht geladen werden.", {
+      cause: error,
+    });
+  }
+
+  return (data ?? []).map((f) => ({
+    id: f.id,
+    title: f.title,
+    definition: f.draft_definition as unknown as FormDefinition,
+  }));
+}

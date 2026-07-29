@@ -26,6 +26,15 @@ export const triggerNodeSchema = z.object({
   type: z.literal("trigger"),
   config: z.object({
     event: z.literal("response_submitted"),
+    /**
+     * Forms whose submissions trigger this workflow — the UI source of
+     * truth for a workflow's trigger scope (mirrored into the
+     * workflow_form_triggers join table for the enqueue lookup; see
+     * lib/db/repositories/workflows.ts's syncWorkflowTriggerForms).
+     * `.default([])` keeps pre-existing stored definitions parseable
+     * without a schema-version bump.
+     */
+    formIds: z.array(z.string().uuid()).max(20).default([]),
   }),
 });
 

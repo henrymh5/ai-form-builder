@@ -9,8 +9,11 @@ import {
 import { generateWorkflowId } from "@/lib/workflow-schema/ids";
 import { allowedHandlesFor, type WorkflowNode, type WorkflowNodeType } from "@/lib/workflow-schema/nodes";
 import type { WorkflowDefinition } from "@/lib/workflow-schema/schema";
-import { validateWorkflowDefinition, type WorkflowValidationResult } from "@/lib/workflow-schema/validate";
-import type { FormDefinition } from "@/lib/form-schema/schema";
+import {
+  validateWorkflowDefinition,
+  type WorkflowFormRef,
+  type WorkflowValidationResult,
+} from "@/lib/workflow-schema/validate";
 import { definitionToFlow, flowToDefinition, type FlowEdge, type FlowNode } from "./to-flow";
 
 /**
@@ -19,6 +22,11 @@ import { definitionToFlow, flowToDefinition, type FlowEdge, type FlowNode } from
  * history and NO autosave (plan: an active workflow performs real side
  * effects, so edits only take effect on an explicit "Speichern"). `dirty`
  * drives the save button + unsaved-changes indicator.
+ *
+ * `forms` holds every form the current workspace could pick as a trigger —
+ * NOT just the ones currently selected — so the trigger config panel can
+ * offer the full checkbox list. Field pickers elsewhere derive the
+ * trigger's currently-selected subset via `getTriggerFormRefs()`.
  */
 
 const DEFAULT_NODE_CONFIG: Record<Exclude<WorkflowNodeType, "trigger">, WorkflowNode["config"]> = {
@@ -40,20 +48,21 @@ const DEFAULT_NODE_LABEL_OFFSET: Record<WorkflowNodeType, { x: number; y: number
 
 interface WorkflowEditorState {
   workflowId: string | null;
-  formId: string | null;
+  workspaceId: string | null;
   nodes: FlowNode[];
   edges: FlowEdge[];
   selectedNodeId: string | null;
   dirty: boolean;
   saving: boolean;
   saveError: string | null;
-  form: FormDefinition | null;
+  /** All forms in the workspace, available for the trigger's form selection. */
+  forms: WorkflowFormRef[];
 
   load: (params: {
     workflowId: string;
-    formId: string;
+    workspaceId: string;
     definition: WorkflowDefinition;
-    form: FormDefinition;
+    forms: WorkflowFormRef[];
   }) => void;
 
   onNodesChange: (changes: NodeChange<FlowNode>[]) => void;
@@ -65,6 +74,8 @@ interface WorkflowEditorState {
   removeNode: (nodeId: string) => void;
   selectNode: (nodeId: string | null) => void;
 
+  /** The forms currently selected in the trigger node's config.formIds. */
+  getTriggerFormRefs: () => WorkflowFormRef[];
   getDefinition: () => WorkflowDefinition;
   validate: () => WorkflowValidationResult;
   markSaved: () => void;
@@ -74,23 +85,23 @@ interface WorkflowEditorState {
 
 export const useWorkflowEditorStore = create<WorkflowEditorState>((set, get) => ({
   workflowId: null,
-  formId: null,
+  workspaceId: null,
   nodes: [],
   edges: [],
   selectedNodeId: null,
   dirty: false,
   saving: false,
   saveError: null,
-  form: null,
+  forms: [],
 
-  load: ({ workflowId, formId, definition, form }) => {
+  load: ({ workflowId, workspaceId, definition, forms }) => {
     const { nodes, edges } = definitionToFlow(definition);
     set({
       workflowId,
-      formId,
+      workspaceId,
       nodes,
       edges,
-      form,
+      forms,
       selectedNodeId: null,
       dirty: false,
       saveError: null,
@@ -142,7 +153,7 @@ export const useWorkflowEditorStore = create<WorkflowEditorState>((set, get) => 
     const id = generateWorkflowId("node");
     const config =
       type === "trigger"
-        ? { event: "response_submitted" as const }
+        ? { event: "response_submitted" as const, formIds: [] }
         : DEFAULT_NODE_CONFIG[type];
 
     const newNode: FlowNode = {
@@ -178,14 +189,22 @@ export const useWorkflowEditorStore = create<WorkflowEditorState>((set, get) => 
 
   selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
 
+  getTriggerFormRefs: () => {
+    const { nodes, forms } = get();
+    const trigger = nodes.find((n) => n.data.type === "trigger");
+    if (!trigger || trigger.data.type !== "trigger") return [];
+    const selected = new Set(trigger.data.config.formIds);
+    return forms.filter((f) => selected.has(f.id));
+  },
+
   getDefinition: () => {
     const { nodes, edges } = get();
     return flowToDefinition(nodes, edges);
   },
 
   validate: () => {
-    const { form } = get();
-    return validateWorkflowDefinition(get().getDefinition(), form ?? undefined);
+    const { forms } = get();
+    return validateWorkflowDefinition(get().getDefinition(), forms);
   },
 
   markSaved: () => set({ dirty: false, saving: false, saveError: null }),

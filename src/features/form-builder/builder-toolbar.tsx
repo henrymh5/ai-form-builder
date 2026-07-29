@@ -70,12 +70,6 @@ export function BuilderToolbar({
         >
           Analytics
         </Link>
-        <Link
-          href={`/forms/${formId}/workflows`}
-          className="text-text-secondary hover:text-text-primary text-sm"
-        >
-          Workflows
-        </Link>
         <PreviewDialog />
         <ThemeEditorDialog />
         <ConditionsPanel />

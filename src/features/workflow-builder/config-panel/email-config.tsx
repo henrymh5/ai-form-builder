@@ -4,19 +4,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { FormDefinition } from "@/lib/form-schema/schema";
 import type { WorkflowNode } from "@/lib/workflow-schema/schema";
+import type { WorkflowFormRef } from "@/lib/workflow-schema/validate";
 import { FieldPicker, insertFieldPlaceholder } from "./field-picker";
 
 type EmailConfig = Extract<WorkflowNode, { type: "email" }>["config"];
 
 export function EmailConfigForm({
   config,
-  form,
+  forms,
   onChange,
 }: {
   config: EmailConfig;
-  form: FormDefinition;
+  forms: WorkflowFormRef[];
   onChange: (config: EmailConfig) => void;
 }) {
   return (
@@ -44,7 +44,7 @@ export function EmailConfigForm({
         <div className="space-y-1.5">
           <Label>Empfängerfeld</Label>
           <FieldPicker
-            form={form}
+            forms={forms}
             value={config.submitterFieldId}
             onChange={(fieldId) => onChange({ ...config, submitterFieldId: fieldId })}
           />
@@ -77,7 +77,7 @@ export function EmailConfigForm({
         <div className="flex items-center justify-between">
           <Label htmlFor="email-body">Nachricht</Label>
           <FieldPicker
-            form={form}
+            forms={forms}
             value={undefined}
             placeholder="Platzhalter einfügen"
             onChange={(fieldId) =>

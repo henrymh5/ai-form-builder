@@ -40,10 +40,11 @@ function formatDate(iso: string): string {
 
 export function WorkflowCard({
   workflow,
-  formId,
+  formTitleById,
 }: {
   workflow: WorkflowRecord;
-  formId: string;
+  /** Resolves the workflow's triggerFormIds to display names — id -> title. */
+  formTitleById: Record<string, string>;
 }) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -57,7 +58,7 @@ export function WorkflowCard({
     startTransition(async () => {
       const result = await toggleWorkflowStatusAction(
         workflow.id,
-        formId,
+        workflow.workspaceId,
         nextStatus,
         workflow.definition,
       );
@@ -66,11 +67,13 @@ export function WorkflowCard({
     });
   }
 
+  const triggerFormTitles = workflow.triggerFormIds.map((id) => formTitleById[id] ?? "Unbekanntes Formular");
+
   return (
     <Card className="flex flex-col gap-3" data-testid="workflow-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <Link href={`/forms/${formId}/workflows/${workflow.id}`} className="hover:underline">
+          <Link href={`/workflows/${workflow.id}`} className="hover:underline">
             <h3 className="text-text-primary truncate text-base font-semibold">{workflow.name}</h3>
           </Link>
           <WorkflowStatusBadge status={status} className="mt-1.5" />
@@ -84,10 +87,10 @@ export function WorkflowCard({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href={`/forms/${formId}/workflows/${workflow.id}`}>Öffnen</Link>
+              <Link href={`/workflows/${workflow.id}`}>Öffnen</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={`/forms/${formId}/workflows/${workflow.id}/runs`}>Läufe ansehen</Link>
+              <Link href={`/workflows/${workflow.id}/runs`}>Läufe ansehen</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setRenameOpen(true)}>Umbenennen</DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -97,6 +100,14 @@ export function WorkflowCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <p className="text-text-secondary truncate text-xs">
+        {triggerFormTitles.length === 0
+          ? "Kein Formular ausgewählt"
+          : triggerFormTitles.length === 1
+            ? triggerFormTitles[0]
+            : `${triggerFormTitles.length} Formulare`}
+      </p>
 
       <div className="flex items-center justify-between">
         <Label htmlFor={`toggle-${workflow.id}`} className="text-text-secondary text-sm">
@@ -126,7 +137,6 @@ export function WorkflowCard({
             className="space-y-4"
           >
             <input type="hidden" name="workflowId" value={workflow.id} />
-            <input type="hidden" name="formId" value={formId} />
             <div className="space-y-1.5">
               <Label htmlFor={`rename-${workflow.id}`}>Name</Label>
               <Input id={`rename-${workflow.id}`} name="name" defaultValue={workflow.name} required />
@@ -152,7 +162,6 @@ export function WorkflowCard({
           <DialogFooter>
             <form action={deleteWorkflowAction}>
               <input type="hidden" name="workflowId" value={workflow.id} />
-              <input type="hidden" name="formId" value={formId} />
               <Button type="submit" variant="destructive">
                 Löschen
               </Button>

@@ -7,8 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { OPERATORS_BY_FIELD_TYPE, type ConditionRule, type Operator } from "@/lib/form-schema/conditions";
 import { isAnswerableField, type Field } from "@/lib/form-schema/fields";
-import type { FormDefinition } from "@/lib/form-schema/schema";
 import type { WorkflowNode } from "@/lib/workflow-schema/schema";
+import type { WorkflowFormRef } from "@/lib/workflow-schema/validate";
 import { FieldPicker } from "./field-picker";
 
 const OPERATOR_LABEL: Record<Operator, string> = {
@@ -32,16 +32,21 @@ type AnswerableField = Extract<Field, { key: string }>;
 
 export function ConditionConfigForm({
   config,
-  form,
+  forms,
   onChange,
 }: {
   config: ConditionConfig;
-  form: FormDefinition;
+  forms: WorkflowFormRef[];
   onChange: (config: ConditionConfig) => void;
 }) {
-  const fields: AnswerableField[] = form.pages
-    .flatMap((p) => p.fields)
-    .filter((f): f is AnswerableField => isAnswerableField(f));
+  // Union of answerable fields across all trigger forms, deduplicated by id — mirrors FieldPicker's logic.
+  const fieldById = new Map<string, AnswerableField>();
+  for (const form of forms) {
+    for (const field of form.definition.pages.flatMap((p) => p.fields)) {
+      if (isAnswerableField(field)) fieldById.set(field.id, field as AnswerableField);
+    }
+  }
+  const fields = [...fieldById.values()];
 
   function updateRule(index: number, patch: Partial<ConditionRule>) {
     const rules = config.rules.map((rule, i) => (i === index ? { ...rule, ...patch } : rule));
@@ -82,7 +87,7 @@ export function ConditionConfigForm({
 
       <div className="space-y-3">
         {config.rules.map((rule, index) => {
-          const field = fields.find((f) => f.id === rule.fieldId);
+          const field = fieldById.get(rule.fieldId);
           const operators: readonly Operator[] = field ? OPERATORS_BY_FIELD_TYPE[field.type] : [];
           const needsValue = !NO_VALUE_OPERATORS.includes(rule.operator);
 
@@ -91,10 +96,10 @@ export function ConditionConfigForm({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 space-y-2">
                   <FieldPicker
-                    form={form}
+                    forms={forms}
                     value={rule.fieldId}
                     onChange={(fieldId) => {
-                      const nextField = fields.find((f) => f.id === fieldId);
+                      const nextField = fieldById.get(fieldId);
                       const nextOperators: readonly Operator[] = nextField
                         ? OPERATORS_BY_FIELD_TYPE[nextField.type]
                         : [];

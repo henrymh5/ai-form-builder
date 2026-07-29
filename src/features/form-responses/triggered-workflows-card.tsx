@@ -14,7 +14,7 @@ function formatDateTime(iso: string): string {
 }
 
 /** "Ausgelöste Workflows" section on the response detail page — links into each workflow's run history. */
-export function TriggeredWorkflowsCard({ formId, runs }: { formId: string; runs: RunForResponse[] }) {
+export function TriggeredWorkflowsCard({ runs }: { runs: RunForResponse[] }) {
   if (runs.length === 0) return null;
 
   return (
@@ -24,7 +24,7 @@ export function TriggeredWorkflowsCard({ formId, runs }: { formId: string; runs:
         {runs.map((run) => (
           <li key={run.id} className="flex items-center justify-between gap-2 text-sm">
             <Link
-              href={`/forms/${formId}/workflows/${run.workflowId}/runs`}
+              href={`/workflows/${run.workflowId}/runs`}
               className="text-text-primary hover:underline"
             >
               {run.workflowName}

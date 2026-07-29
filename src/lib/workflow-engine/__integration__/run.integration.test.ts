@@ -7,8 +7,9 @@ import type { WorkflowDefinition } from "@/lib/workflow-schema/schema";
 
 /**
  * Exercises enqueue + execute against the real local Supabase stack (RLS,
- * the unique idempotency index, the queued/running/succeeded lifecycle) —
- * unlike interpreter.test.ts, which is pure and DB-free. Only external
+ * the unique idempotency index, the queued/running/succeeded lifecycle,
+ * the workflow_form_triggers join table from 0013) — unlike
+ * interpreter.test.ts, which is pure and DB-free. Only external
  * side-effecting calls (fetch for the webhook action) are mocked; nothing
  * about the workflow engine itself is mocked, so this genuinely tests the
  * repository layer and the run.ts orchestration together.
@@ -21,6 +22,8 @@ describe("workflow enqueue + execute (integration)", () => {
   let formId: string;
   let publishedVersionId: string;
   let fieldId: string;
+  let secondFormId: string;
+  let secondPublishedVersionId: string;
 
   beforeAll(async () => {
     const owner = await createTestUser("Workflow Test Owner");
@@ -79,17 +82,55 @@ describe("workflow enqueue + execute (integration)", () => {
       .from("forms")
       .update({ status: "published", published_version_id: publishedVersionId })
       .eq("id", formId);
+
+    // A second form in the same workspace — used by the multi-form-trigger test.
+    const { data: secondForm, error: secondFormError } = await ownerClient
+      .from("forms")
+      .insert({
+        workspace_id: workspaceId,
+        title: "Zweites Integrationstest-Formular",
+        slug: `wf-integration-2-${Date.now()}`,
+        draft_definition: formDef as never,
+        schema_version: CURRENT_SCHEMA_VERSION,
+        created_by: ownerId,
+      })
+      .select("id")
+      .single();
+    if (secondFormError) throw secondFormError;
+    secondFormId = secondForm.id;
+
+    const { data: secondVersion, error: secondVersionError } = await ownerClient
+      .from("form_versions")
+      .insert({
+        form_id: secondFormId,
+        version_number: 1,
+        schema_version: CURRENT_SCHEMA_VERSION,
+        definition: formDef as never,
+        created_by: ownerId,
+      })
+      .select("id")
+      .single();
+    if (secondVersionError) throw secondVersionError;
+    secondPublishedVersionId = secondVersion.id;
+
+    await ownerClient
+      .from("forms")
+      .update({ status: "published", published_version_id: secondPublishedVersionId })
+      .eq("id", secondFormId);
   });
 
   afterAll(async () => {
     if (ownerId) await deleteTestUser(ownerId);
   });
 
-  async function insertResponse(): Promise<string> {
+  async function insertResponse(
+    targetFormId: string = formId,
+    targetVersionId: string = publishedVersionId,
+  ): Promise<string> {
     const admin = serviceClient();
     const { data: session, error: sessionError } = await admin
       .from("form_sessions")
-      .insert({ form_id: formId, form_version_id: publishedVersionId, status: "completed" })
+      .insert({ form_id: targetFormId, form_version_id: targetVersionId, status: "completed" })
       .select("id")
       .single();
     if (sessionError) throw sessionError;
@@ -97,8 +138,8 @@ describe("workflow enqueue + execute (integration)", () => {
     const { data: response, error: responseError } = await admin
       .from("responses")
       .insert({
-        form_id: formId,
-        form_version_id: publishedVersionId,
+        form_id: targetFormId,
+        form_version_id: targetVersionId,
         session_id: session.id,
         status: "completed",
         idempotency_key: `key-${Date.now()}-${Math.random()}`,
@@ -117,13 +158,18 @@ describe("workflow enqueue + execute (integration)", () => {
     return response.id;
   }
 
-  function workflowDefinitionWithResponseAction(): WorkflowDefinition {
+  function workflowDefinitionWithResponseAction(triggerFormIds: string[] = [formId]): WorkflowDefinition {
     const triggerId = generateWorkflowId("node");
     const actionId = generateWorkflowId("node");
     return {
       schemaVersion: 1,
       nodes: [
-        { id: triggerId, type: "trigger", position: { x: 0, y: 0 }, config: { event: "response_submitted" } },
+        {
+          id: triggerId,
+          type: "trigger",
+          position: { x: 0, y: 0 },
+          config: { event: "response_submitted", formIds: triggerFormIds },
+        },
         {
           id: actionId,
           type: "responseAction",
@@ -135,14 +181,19 @@ describe("workflow enqueue + execute (integration)", () => {
     };
   }
 
-  it("enqueues one run per enabled workflow and executes it end-to-end", async () => {
+  /** Inserts a workflow row + its workflow_form_triggers join rows — mirrors what createWorkflow/saveWorkflowDefinition do together. */
+  async function insertWorkflow(params: {
+    name: string;
+    status: "enabled" | "paused";
+    triggerFormIds: string[];
+  }): Promise<string> {
     const { data: workflow, error: workflowError } = await ownerClient
       .from("workflows")
       .insert({
-        form_id: formId,
-        name: "Notiz-Workflow",
-        status: "enabled",
-        definition: workflowDefinitionWithResponseAction() as never,
+        workspace_id: workspaceId,
+        name: params.name,
+        status: params.status,
+        definition: workflowDefinitionWithResponseAction(params.triggerFormIds) as never,
         schema_version: 1,
         webhook_secret: "test-secret",
         created_by: ownerId,
@@ -150,6 +201,17 @@ describe("workflow enqueue + execute (integration)", () => {
       .select("id")
       .single();
     if (workflowError) throw workflowError;
+
+    const { error: triggerError } = await ownerClient
+      .from("workflow_form_triggers")
+      .insert(params.triggerFormIds.map((triggerFormId) => ({ workflow_id: workflow.id, form_id: triggerFormId })));
+    if (triggerError) throw triggerError;
+
+    return workflow.id;
+  }
+
+  it("enqueues one run per enabled workflow and executes it end-to-end", async () => {
+    const workflowId = await insertWorkflow({ name: "Notiz-Workflow", status: "enabled", triggerFormIds: [formId] });
 
     const responseId = await insertResponse();
 
@@ -182,23 +244,15 @@ describe("workflow enqueue + execute (integration)", () => {
       .single();
     expect(response?.note).toContain("Budget: 5000");
 
-    await admin.from("workflows").delete().eq("id", workflow.id);
+    await admin.from("workflows").delete().eq("id", workflowId);
   });
 
   it("does not enqueue a second run for the same response+workflow (idempotency)", async () => {
-    const { data: workflow, error: workflowError } = await ownerClient
-      .from("workflows")
-      .insert({
-        form_id: formId,
-        name: "Idempotenz-Workflow",
-        status: "enabled",
-        definition: workflowDefinitionWithResponseAction() as never,
-        schema_version: 1,
-        created_by: ownerId,
-      })
-      .select("id")
-      .single();
-    if (workflowError) throw workflowError;
+    const workflowId = await insertWorkflow({
+      name: "Idempotenz-Workflow",
+      status: "enabled",
+      triggerFormIds: [formId],
+    });
 
     const responseId = await insertResponse();
 
@@ -213,27 +267,19 @@ describe("workflow enqueue + execute (integration)", () => {
     const { data: runs } = await admin
       .from("workflow_runs")
       .select("id")
-      .eq("workflow_id", workflow.id)
+      .eq("workflow_id", workflowId)
       .eq("response_id", responseId);
     expect(runs).toHaveLength(1);
 
-    await admin.from("workflows").delete().eq("id", workflow.id);
+    await admin.from("workflows").delete().eq("id", workflowId);
   });
 
   it("does not enqueue anything when no workflow is enabled", async () => {
-    const { data: workflow, error: workflowError } = await ownerClient
-      .from("workflows")
-      .insert({
-        form_id: formId,
-        name: "Pausierter Workflow",
-        status: "paused",
-        definition: workflowDefinitionWithResponseAction() as never,
-        schema_version: 1,
-        created_by: ownerId,
-      })
-      .select("id")
-      .single();
-    if (workflowError) throw workflowError;
+    const workflowId = await insertWorkflow({
+      name: "Pausierter Workflow",
+      status: "paused",
+      triggerFormIds: [formId],
+    });
 
     const responseId = await insertResponse();
     const { enqueueWorkflowRuns } = await import("../run");
@@ -241,6 +287,90 @@ describe("workflow enqueue + execute (integration)", () => {
     expect(runIds).toHaveLength(0);
 
     const admin = serviceClient();
-    await admin.from("workflows").delete().eq("id", workflow.id);
+    await admin.from("workflows").delete().eq("id", workflowId);
+  });
+
+  it("fires a workflow triggered by multiple forms for either of them, but not for an unrelated form", async () => {
+    const workflowId = await insertWorkflow({
+      name: "Multi-Formular-Workflow",
+      status: "enabled",
+      triggerFormIds: [formId, secondFormId],
+    });
+
+    const { enqueueWorkflowRuns } = await import("../run");
+
+    const responseOnFirstForm = await insertResponse(formId, publishedVersionId);
+    const runsForFirstForm = await enqueueWorkflowRuns({ formId, responseId: responseOnFirstForm });
+    expect(runsForFirstForm).toHaveLength(1);
+
+    const responseOnSecondForm = await insertResponse(secondFormId, secondPublishedVersionId);
+    const runsForSecondForm = await enqueueWorkflowRuns({
+      formId: secondFormId,
+      responseId: responseOnSecondForm,
+    });
+    expect(runsForSecondForm).toHaveLength(1);
+
+    const admin = serviceClient();
+
+    // A third, unrelated form must never enqueue this workflow.
+    const { data: unrelatedForm, error: unrelatedFormError } = await ownerClient
+      .from("forms")
+      .insert({
+        workspace_id: workspaceId,
+        title: "Unbeteiligtes Formular",
+        slug: `wf-integration-unrelated-${Date.now()}`,
+        draft_definition: createEmptyFormDefinition("Unbeteiligtes Formular") as never,
+        schema_version: CURRENT_SCHEMA_VERSION,
+        created_by: ownerId,
+      })
+      .select("id")
+      .single();
+    if (unrelatedFormError) throw unrelatedFormError;
+
+    const runsForUnrelatedForm = await enqueueWorkflowRuns({
+      formId: unrelatedForm.id,
+      responseId: responseOnFirstForm, // response id is irrelevant here; only the formId lookup matters
+    });
+    expect(runsForUnrelatedForm).toHaveLength(0);
+
+    await admin.from("forms").delete().eq("id", unrelatedForm.id);
+    await admin.from("workflows").delete().eq("id", workflowId);
+  });
+
+  it("re-syncs workflow_form_triggers when a workflow's trigger formIds change", async () => {
+    // Exercises the same delete/insert sync logic as
+    // lib/db/repositories/workflows.ts's syncWorkflowTriggerForms — that
+    // function itself requires a Next.js request scope (cookie-based
+    // createUserClient), which a plain test import doesn't have, so this
+    // reproduces its query shape directly against the RLS-authenticated
+    // owner client instead.
+    const workflowId = await insertWorkflow({
+      name: "Sync-Workflow",
+      status: "paused",
+      triggerFormIds: [formId],
+    });
+
+    const { error: deleteError } = await ownerClient
+      .from("workflow_form_triggers")
+      .delete()
+      .eq("workflow_id", workflowId)
+      .eq("form_id", formId);
+    if (deleteError) throw deleteError;
+
+    const { error: insertError } = await ownerClient
+      .from("workflow_form_triggers")
+      .insert({ workflow_id: workflowId, form_id: secondFormId });
+    if (insertError) throw insertError;
+
+    const admin = serviceClient();
+    const { data: triggers } = await admin
+      .from("workflow_form_triggers")
+      .select("form_id")
+      .eq("workflow_id", workflowId);
+
+    expect(triggers).toHaveLength(1);
+    expect(triggers![0]!.form_id).toBe(secondFormId);
+
+    await admin.from("workflows").delete().eq("id", workflowId);
   });
 });

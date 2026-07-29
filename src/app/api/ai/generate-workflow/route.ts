@@ -3,25 +3,18 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/db/repositories/profile";
 import { getForm } from "@/lib/db/repositories/forms";
 import { listMyWorkspaces } from "@/lib/db/repositories/workspaces";
-import { createUserClient } from "@/lib/db/user-client";
+import { createWorkflow } from "@/lib/db/repositories/workflows";
 import { generateWorkflow } from "@/lib/ai/functions/generate-workflow";
 import { generateWorkflowInputSchema } from "@/lib/ai/workflow-schemas";
 import { toWorkflowDefinition } from "@/lib/ai/convert-workflow";
-import { CURRENT_WORKFLOW_SCHEMA_VERSION } from "@/lib/workflow-schema/schema";
-import { validateWorkflowDefinition, isWorkflowValid } from "@/lib/workflow-schema/validate";
+import { validateWorkflowDefinition, isWorkflowValid, type WorkflowFormRef } from "@/lib/workflow-schema/validate";
 import { checkRateLimit, AI_RATE_LIMITS } from "@/lib/db/repositories/rate-limit";
 import { AppError, isAppError } from "@/lib/errors";
-import { customAlphabet } from "nanoid";
 
 const requestSchema = z.object({
   formId: z.string().uuid(),
   description: z.string().min(10).max(2000),
 });
-
-const webhookSecretAlphabet = customAlphabet(
-  "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",
-  32,
-);
 
 /** Generation runs synchronously and can take ~30s (plan §5.4, mirrors generate-form). */
 export const maxDuration = 60;
@@ -29,8 +22,11 @@ export const maxDuration = 60;
 /**
  * POST /api/ai/generate-workflow. Flow: auth -> role check -> rate limits ->
  * Claude (structured output) -> Zod re-validation -> label->fieldId
- * resolution + dagre layout (convert-workflow.ts) -> domain validation ->
- * saved as a new, paused workflow -> editor opens it.
+ * resolution + dagre layout (convert-workflow.ts, trigger.config.formIds =
+ * [formId]) -> domain validation -> saved as a new, paused, workspace-scoped
+ * workflow (createWorkflow also syncs workflow_form_triggers) -> editor
+ * opens it. The AI generates against exactly one form's fields — the user
+ * can broaden the trigger's form selection afterward in the editor.
  */
 export async function POST(request: Request) {
   try {
@@ -69,37 +65,27 @@ export async function POST(request: Request) {
       { userId: user.id, workspaceId: workspace.id, formId: form.id },
     );
 
-    const definition = toWorkflowDefinition(aiOutput, form.draftDefinition);
+    const definition = toWorkflowDefinition(aiOutput, form.draftDefinition, form.id);
 
     // Domain validation (plan §11 "Warum doppelt validieren?") — the JSON
     // schema already shaped Claude's output; this checks structural rules
-    // (single trigger, acyclic, valid handles) the same way a hand-built
-    // workflow would be checked.
-    const validation = validateWorkflowDefinition(definition, form.draftDefinition);
+    // (single trigger, acyclic, valid handles, field references) the same
+    // way a hand-built workflow would be checked.
+    const formRef: WorkflowFormRef = { id: form.id, title: form.title, definition: form.draftDefinition };
+    const validation = validateWorkflowDefinition(definition, [formRef]);
     if (!isWorkflowValid(validation)) {
       throw new AppError("AI_INVALID_OUTPUT", "Der generierte Workflow ist ungültig.", {
         details: { errors: validation.errors },
       });
     }
 
-    const supabase = await createUserClient();
-    const { data: workflow, error } = await supabase
-      .from("workflows")
-      .insert({
-        form_id: form.id,
-        name: aiOutput.name,
-        status: "paused",
-        definition: definition as never,
-        schema_version: CURRENT_WORKFLOW_SCHEMA_VERSION,
-        webhook_secret: webhookSecretAlphabet(),
-        created_by: user.id,
-      })
-      .select("id")
-      .single();
-
-    if (error || !workflow) {
-      throw new AppError("FORBIDDEN", "Workflow konnte nicht erstellt werden.", { cause: error });
-    }
+    const workflow = await createWorkflow({
+      workspaceId: workspace.id,
+      name: aiOutput.name,
+      userId: user.id,
+      definition,
+      status: "paused",
+    });
 
     return NextResponse.json({ workflowId: workflow.id });
   } catch (error) {

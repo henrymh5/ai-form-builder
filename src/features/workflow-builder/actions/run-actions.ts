@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
   enqueueWorkflowRun,
+  getResponseFormId,
   getWorkflowRun,
 } from "@/lib/db/repositories/workflow-runs";
 import { executeWorkflowRun } from "@/lib/workflow-engine/run";
@@ -11,8 +12,6 @@ import { workflowDefinitionSchema } from "@/lib/workflow-schema/schema";
 
 const retrySchema = z.object({
   runId: z.string().uuid(),
-  workflowId: z.string().uuid(),
-  formId: z.string().uuid(),
 });
 
 const MAX_ATTEMPTS = 3;
@@ -24,11 +23,7 @@ export interface RetryRunResult {
 
 /** Retries a failed/stuck run — inserts a new attempt with the same snapshot and executes it. */
 export async function retryRunAction(formData: FormData): Promise<RetryRunResult> {
-  const parsed = retrySchema.safeParse({
-    runId: formData.get("runId"),
-    workflowId: formData.get("workflowId"),
-    formId: formData.get("formId"),
-  });
+  const parsed = retrySchema.safeParse({ runId: formData.get("runId") });
   if (!parsed.success) return { ok: false, error: "Ungültige Anfrage." };
 
   const run = await getWorkflowRun(parsed.data.runId);
@@ -51,13 +46,12 @@ export async function retryRunAction(formData: FormData): Promise<RetryRunResult
 
   await executeWorkflowRun(newRunId);
 
-  revalidatePath(`/forms/${parsed.data.formId}/workflows/${parsed.data.workflowId}/runs`);
+  revalidatePath(`/workflows/${run.workflowId}/runs`);
   return { ok: true };
 }
 
 const testRunSchema = z.object({
   workflowId: z.string().uuid(),
-  formId: z.string().uuid(),
   responseId: z.string().uuid(),
   definition: workflowDefinitionSchema,
 });
@@ -71,21 +65,25 @@ export interface TestRunResult {
 /**
  * Starts a dry-run test using an existing response's answers — actions are
  * simulated (see RunContext.dryRun in the engine), never sent for real.
+ * `formId` is resolved server-side from the chosen response (never trusted
+ * from the client) since a workflow's trigger can now cover multiple forms.
  * Awaited directly rather than via after(): the user is watching and wants
  * the result immediately, unlike a real visitor's submission.
  */
 export async function startTestRunAction(params: {
   workflowId: string;
-  formId: string;
   responseId: string;
   definition: unknown;
 }): Promise<TestRunResult> {
   const parsed = testRunSchema.safeParse(params);
   if (!parsed.success) return { ok: false, error: "Ungültige Anfrage." };
 
+  const formId = await getResponseFormId(parsed.data.responseId);
+  if (!formId) return { ok: false, error: "Antwort nicht gefunden." };
+
   const runId = await enqueueWorkflowRun({
     workflowId: parsed.data.workflowId,
-    formId: parsed.data.formId,
+    formId,
     responseId: parsed.data.responseId,
     definition: parsed.data.definition,
     isTest: true,
@@ -94,6 +92,6 @@ export async function startTestRunAction(params: {
 
   await executeWorkflowRun(runId, { dryRun: true });
 
-  revalidatePath(`/forms/${parsed.data.formId}/workflows/${parsed.data.workflowId}/runs`);
+  revalidatePath(`/workflows/${parsed.data.workflowId}/runs`);
   return { ok: true, runId };
 }

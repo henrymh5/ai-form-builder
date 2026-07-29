@@ -5,18 +5,27 @@ import type { FormDefinition } from "@/lib/form-schema/schema";
 import { createEmptyWorkflowDefinition } from "./factory";
 import { generateWorkflowId } from "./ids";
 import type { WorkflowDefinition } from "./schema";
-import { isWorkflowValid, validateWorkflowDefinition } from "./validate";
+import { isWorkflowValid, validateWorkflowDefinition, type WorkflowFormRef } from "./validate";
 
-function baseDef(): WorkflowDefinition {
-  return createEmptyWorkflowDefinition();
+const FORM_ID = "11111111-1111-4111-8111-111111111111";
+const OTHER_FORM_ID = "22222222-2222-4222-8222-222222222222";
+
+function baseDef(formIds: string[] = [FORM_ID]): WorkflowDefinition {
+  return createEmptyWorkflowDefinition(formIds);
 }
 
 function triggerId(def: WorkflowDefinition): string {
   return def.nodes.find((n) => n.type === "trigger")!.id;
 }
 
+function formRef(id: string, title: string, fields: FormDefinition["pages"][0]["fields"] = []): WorkflowFormRef {
+  const definition = createEmptyFormDefinition(title);
+  definition.pages[0]!.fields = fields;
+  return { id, title, definition };
+}
+
 describe("validateWorkflowDefinition — trigger", () => {
-  it("passes for a definition with just a trigger", () => {
+  it("passes for a definition with just a trigger and a selected form", () => {
     const result = validateWorkflowDefinition(baseDef());
     expect(isWorkflowValid(result)).toBe(true);
   });
@@ -35,7 +44,7 @@ describe("validateWorkflowDefinition — trigger", () => {
       id: generateWorkflowId("node"),
       type: "trigger",
       position: { x: 100, y: 0 },
-      config: { event: "response_submitted" },
+      config: { event: "response_submitted", formIds: [FORM_ID] },
     });
     const result = validateWorkflowDefinition(def);
     expect(result.errors.some((e) => e.code === "MULTIPLE_TRIGGERS")).toBe(true);
@@ -58,6 +67,24 @@ describe("validateWorkflowDefinition — trigger", () => {
     });
     const result = validateWorkflowDefinition(def);
     expect(result.errors.some((e) => e.code === "TRIGGER_HAS_INCOMING_EDGE")).toBe(true);
+  });
+
+  it("errors when the trigger has no forms selected", () => {
+    const def = baseDef([]);
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "TRIGGER_NO_FORMS")).toBe(true);
+  });
+
+  it("warns when the trigger references a form not in the provided set (e.g. deleted)", () => {
+    const def = baseDef([FORM_ID]);
+    const result = validateWorkflowDefinition(def, [formRef(OTHER_FORM_ID, "Anderes Formular")]);
+    expect(result.warnings.some((w) => w.code === "TRIGGER_UNKNOWN_FORM")).toBe(true);
+  });
+
+  it("does not warn about unknown forms when the trigger form is in the provided set", () => {
+    const def = baseDef([FORM_ID]);
+    const result = validateWorkflowDefinition(def, [formRef(FORM_ID, "Mein Formular")]);
+    expect(result.warnings.some((w) => w.code === "TRIGGER_UNKNOWN_FORM")).toBe(false);
   });
 });
 
@@ -179,13 +206,10 @@ describe("validateWorkflowDefinition — graph structure", () => {
   });
 });
 
-describe("validateWorkflowDefinition — field references", () => {
-  function formWithField(): FormDefinition {
-    const form = createEmptyFormDefinition("Testformular");
-    form.pages[0]!.fields = [
-      { id: generateId("field"), key: "budget", label: "Budget", required: false, type: "number" },
-    ];
-    return form;
+describe("validateWorkflowDefinition — field references (single trigger form)", () => {
+  function formWithField(): WorkflowFormRef {
+    const budgetField = { id: generateId("field"), key: "budget", label: "Budget", required: false, type: "number" as const };
+    return formRef(FORM_ID, "Testformular", [budgetField]);
   }
 
   it("warns when a condition references an unknown field", () => {
@@ -203,7 +227,7 @@ describe("validateWorkflowDefinition — field references", () => {
       target: condition,
       sourceHandle: "out",
     });
-    const result = validateWorkflowDefinition(def, formWithField());
+    const result = validateWorkflowDefinition(def, [formWithField()]);
     expect(
       result.warnings.some((w) => w.code === "CONDITION_REFERENCES_UNKNOWN_FIELD"),
     ).toBe(true);
@@ -216,7 +240,7 @@ describe("validateWorkflowDefinition — field references", () => {
     def.nodes.push({
       id: condition,
       type: "condition",
-      config: { logic: "and", rules: [{ fieldId: form.pages[0]!.fields[0]!.id, operator: "is_answered" }] },
+      config: { logic: "and", rules: [{ fieldId: form.definition.pages[0]!.fields[0]!.id, operator: "is_answered" }] },
       position: { x: 0, y: 100 },
     });
     def.edges.push({
@@ -225,7 +249,7 @@ describe("validateWorkflowDefinition — field references", () => {
       target: condition,
       sourceHandle: "out",
     });
-    const result = validateWorkflowDefinition(def, form);
+    const result = validateWorkflowDefinition(def, [form]);
     expect(
       result.warnings.some((w) => w.code === "CONDITION_REFERENCES_UNKNOWN_FIELD"),
     ).toBe(false);
@@ -250,11 +274,11 @@ describe("validateWorkflowDefinition — field references", () => {
       target: email,
       sourceHandle: "out",
     });
-    const result = validateWorkflowDefinition(def, formWithField());
+    const result = validateWorkflowDefinition(def, [formWithField()]);
     expect(result.warnings.some((w) => w.code === "EMAIL_REFERENCES_UNKNOWN_FIELD")).toBe(true);
   });
 
-  it("skips field-reference checks when no form is provided", () => {
+  it("skips field-reference checks when no forms are provided", () => {
     const def = baseDef();
     const condition = generateWorkflowId("node");
     def.nodes.push({
@@ -271,5 +295,109 @@ describe("validateWorkflowDefinition — field references", () => {
     });
     const result = validateWorkflowDefinition(def);
     expect(result.warnings).toEqual([]);
+  });
+});
+
+describe("validateWorkflowDefinition — field references (multiple trigger forms)", () => {
+  it("does not warn when a field exists in all trigger forms", () => {
+    const budgetFieldA = { id: "fld_shared", key: "budget", label: "Budget", required: false, type: "number" as const };
+    const budgetFieldB = { id: "fld_shared", key: "budget", label: "Budget", required: false, type: "number" as const };
+    const formA = formRef(FORM_ID, "Formular A", [budgetFieldA]);
+    const formB = formRef(OTHER_FORM_ID, "Formular B", [budgetFieldB]);
+
+    const def = baseDef([FORM_ID, OTHER_FORM_ID]);
+    const condition = generateWorkflowId("node");
+    def.nodes.push({
+      id: condition,
+      type: "condition",
+      position: { x: 0, y: 100 },
+      config: { logic: "and", rules: [{ fieldId: "fld_shared", operator: "is_answered" }] },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: condition,
+      sourceHandle: "out",
+    });
+
+    const result = validateWorkflowDefinition(def, [formA, formB]);
+    expect(result.warnings.some((w) => w.code === "FIELD_NOT_IN_ALL_FORMS")).toBe(false);
+    expect(result.warnings.some((w) => w.code === "CONDITION_REFERENCES_UNKNOWN_FIELD")).toBe(false);
+  });
+
+  it("warns (not errors) when a field exists in some but not all trigger forms", () => {
+    const budgetField = { id: "fld_only_in_a", key: "budget", label: "Budget", required: false, type: "number" as const };
+    const formA = formRef(FORM_ID, "Formular A", [budgetField]);
+    const formB = formRef(OTHER_FORM_ID, "Formular B", []); // no matching field
+
+    const def = baseDef([FORM_ID, OTHER_FORM_ID]);
+    const condition = generateWorkflowId("node");
+    def.nodes.push({
+      id: condition,
+      type: "condition",
+      position: { x: 0, y: 100 },
+      config: { logic: "and", rules: [{ fieldId: "fld_only_in_a", operator: "is_answered" }] },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: condition,
+      sourceHandle: "out",
+    });
+
+    const result = validateWorkflowDefinition(def, [formA, formB]);
+    expect(result.warnings.some((w) => w.code === "FIELD_NOT_IN_ALL_FORMS")).toBe(true);
+    expect(result.errors.some((e) => e.code === "CONDITION_REFERENCES_UNKNOWN_FIELD")).toBe(false);
+    expect(isWorkflowValid(result)).toBe(true); // still a warning, not an error
+  });
+
+  it("reports unknown-field (not partial) when the field exists in none of the trigger forms", () => {
+    const formA = formRef(FORM_ID, "Formular A", []);
+    const formB = formRef(OTHER_FORM_ID, "Formular B", []);
+
+    const def = baseDef([FORM_ID, OTHER_FORM_ID]);
+    const condition = generateWorkflowId("node");
+    def.nodes.push({
+      id: condition,
+      type: "condition",
+      position: { x: 0, y: 100 },
+      config: { logic: "and", rules: [{ fieldId: "fld_nowhere", operator: "is_answered" }] },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: condition,
+      sourceHandle: "out",
+    });
+
+    const result = validateWorkflowDefinition(def, [formA, formB]);
+    expect(result.warnings.some((w) => w.code === "CONDITION_REFERENCES_UNKNOWN_FIELD")).toBe(true);
+    expect(result.warnings.some((w) => w.code === "FIELD_NOT_IN_ALL_FORMS")).toBe(false);
+  });
+
+  it("only checks field references against forms the trigger actually selected", () => {
+    // formB is in the provided set but NOT selected by the trigger — its field
+    // absence must not produce a FIELD_NOT_IN_ALL_FORMS warning.
+    const budgetField = { id: "fld_only_in_a", key: "budget", label: "Budget", required: false, type: "number" as const };
+    const formA = formRef(FORM_ID, "Formular A", [budgetField]);
+    const formB = formRef(OTHER_FORM_ID, "Formular B", []);
+
+    const def = baseDef([FORM_ID]); // only formA selected
+    const condition = generateWorkflowId("node");
+    def.nodes.push({
+      id: condition,
+      type: "condition",
+      position: { x: 0, y: 100 },
+      config: { logic: "and", rules: [{ fieldId: "fld_only_in_a", operator: "is_answered" }] },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: condition,
+      sourceHandle: "out",
+    });
+
+    const result = validateWorkflowDefinition(def, [formA, formB]);
+    expect(result.warnings.some((w) => w.code === "FIELD_NOT_IN_ALL_FORMS")).toBe(false);
   });
 });

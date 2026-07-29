@@ -2,7 +2,7 @@ import { CURRENT_WORKFLOW_SCHEMA_VERSION, type WorkflowDefinition } from "./sche
 import { generateWorkflowId } from "./ids";
 
 /** Creates a minimal, valid workflow definition containing only a trigger node. */
-export function createEmptyWorkflowDefinition(): WorkflowDefinition {
+export function createEmptyWorkflowDefinition(initialFormIds: string[] = []): WorkflowDefinition {
   return {
     schemaVersion: CURRENT_WORKFLOW_SCHEMA_VERSION,
     nodes: [
@@ -10,7 +10,7 @@ export function createEmptyWorkflowDefinition(): WorkflowDefinition {
         id: generateWorkflowId("node"),
         type: "trigger",
         position: { x: 0, y: 0 },
-        config: { event: "response_submitted" },
+        config: { event: "response_submitted", formIds: initialFormIds },
       },
     ],
     edges: [],

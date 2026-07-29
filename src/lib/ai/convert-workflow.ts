@@ -66,9 +66,16 @@ function toWorkflowNodeConfig(node: AiWorkflowNode, form: FormDefinition): Workf
   }
 }
 
+/**
+ * `formId` is the single form the AI generated this workflow against — it
+ * becomes the trigger's sole selected form (`config.formIds = [formId]`).
+ * The user can broaden the trigger's form selection afterward in the
+ * editor; multi-form AI generation itself is out of v1 scope.
+ */
 export function toWorkflowDefinition(
   output: GenerateWorkflowOutput,
   form: FormDefinition,
+  formId: string,
 ): WorkflowDefinition {
   const triggerId = generateWorkflowId("node");
   const idByRef = new Map<string, string>();
@@ -79,7 +86,7 @@ export function toWorkflowDefinition(
       id: triggerId,
       type: "trigger",
       position: { x: 0, y: 0 },
-      config: { event: "response_submitted" },
+      config: { event: "response_submitted", formIds: [formId] },
     },
     ...output.nodes.map(
       (node): WorkflowNode =>
