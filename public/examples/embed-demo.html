@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>Embed-Demo</title>
+  </head>
+  <body>
+    <h1>Embed-Demo</h1>
+    <div id="log"></div>
+    <div data-formapp-slug="" id="embed-container"></div>
+    <script>
+      // The E2E test sets the target slug via the query string before this
+      // script runs, since the demo has no server-side templating.
+      var params = new URLSearchParams(window.location.search);
+      var slug = params.get("slug");
+      if (slug) {
+        document.getElementById("embed-container").setAttribute("data-formapp-slug", slug);
+      }
+      var container = document.getElementById("embed-container");
+      var log = document.getElementById("log");
+      ["ready", "started", "stepChanged", "submitted", "error", "resized"].forEach(function (type) {
+        container.addEventListener("formapp:" + type, function (event) {
+          var el = document.createElement("p");
+          el.setAttribute("data-event", type);
+          el.textContent = type + ":" + JSON.stringify(event.detail);
+          log.appendChild(el);
+        });
+      });
+    </script>
+    <script async src="/embed.js"></script>
+  </body>
+</html>
