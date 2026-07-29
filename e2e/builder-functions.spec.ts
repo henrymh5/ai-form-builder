@@ -59,7 +59,7 @@ test("duplicating a page creates a second tab with copied fields under new IDs",
   await page.hover("text=Seite 1");
   await page.getByTitle("Seite duplizieren").click();
 
-  await expect(page.getByRole("button", { name: "Seite 2" })).toBeVisible();
-  await page.getByRole("button", { name: "Seite 2" }).click();
+  await expect(page.getByRole("tab", { name: "Seite 2" })).toBeVisible();
+  await page.getByRole("tab", { name: "Seite 2" }).click();
   await expect(page.locator("label", { hasText: "Kurzer Text" })).toBeVisible();
 });

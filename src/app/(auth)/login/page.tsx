@@ -1,13 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginAction, type AuthActionState } from "@/features/workspaces/actions/auth-actions";
 
 const initialState: AuthActionState = {};
+
+const CALLBACK_ERROR_MESSAGE: Record<string, string> = {
+  confirm_failed:
+    "Der Bestätigungslink ist ungültig oder abgelaufen. Bitte fordere einen neuen an.",
+};
+
+/** Reads the `?error=` callback param — isolated so only this sliver needs the Suspense boundary `useSearchParams` requires during static prerendering. */
+function CallbackError() {
+  const searchParams = useSearchParams();
+  const callbackError = searchParams.get("error");
+  if (!callbackError || !CALLBACK_ERROR_MESSAGE[callbackError]) return null;
+
+  return (
+    <p role="alert" className="text-error text-sm">
+      {CALLBACK_ERROR_MESSAGE[callbackError]}
+    </p>
+  );
+}
 
 export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginAction, initialState);
@@ -18,6 +37,10 @@ export default function LoginPage() {
         <h1 className="text-text-primary text-xl font-semibold">Anmelden</h1>
         <p className="text-text-secondary mt-1 text-sm">Willkommen zurück.</p>
       </div>
+
+      <Suspense fallback={null}>
+        <CallbackError />
+      </Suspense>
 
       <form action={formAction} className="space-y-4">
         <div className="space-y-1.5">

@@ -44,20 +44,20 @@ export function BuilderToolbar({
   const future = useBuilderStore((s) => s.future);
 
   return (
-    <div className="border-border bg-surface flex h-14 shrink-0 items-center justify-between border-b px-4">
-      <div className="flex items-center gap-3">
+    <div className="border-border bg-surface flex min-h-14 w-full shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-4 py-2">
+      <div className="flex min-w-0 items-center gap-3">
         <Link
           href="/dashboard"
-          className="text-text-secondary hover:text-text-primary flex items-center gap-1 text-sm"
+          className="text-text-secondary hover:text-text-primary flex shrink-0 items-center gap-1 text-sm"
         >
           <ArrowLeft className="size-4" />
           Zurück
         </Link>
         <span className="text-border">|</span>
-        <span className="text-text-primary text-sm font-medium">{title}</span>
+        <span className="text-text-primary truncate text-sm font-medium">{title}</span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
         <Link
           href={`/forms/${formId}/responses`}
           className="text-text-secondary hover:text-text-primary text-sm"

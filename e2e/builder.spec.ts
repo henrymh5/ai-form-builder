@@ -68,9 +68,9 @@ test("adding a page creates a new tab and fields stay scoped to their page", asy
   await page.getByRole("button", { name: "Kurzer Text" }).click();
   await page.getByRole("button", { name: "Seite", exact: true }).click();
 
-  await expect(page.getByRole("button", { name: "Seite 2" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Seite 2" })).toBeVisible();
   await expect(page.getByText("Ziehe ein Feld aus der linken Seitenleiste")).toBeVisible();
 
-  await page.getByRole("button", { name: "Seite 1" }).click();
+  await page.getByRole("tab", { name: "Seite 1" }).click();
   await expect(page.locator("label", { hasText: "Kurzer Text" })).toBeVisible();
 });

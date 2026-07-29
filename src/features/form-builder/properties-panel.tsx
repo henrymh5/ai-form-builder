@@ -30,7 +30,7 @@ export function PropertiesPanel({ workspaceId, formId }: { workspaceId: string; 
 
   if (!definition || !selected) {
     return (
-      <aside className="border-border bg-surface w-80 shrink-0 border-l p-4">
+      <aside className="border-border bg-surface w-72 shrink-0 border-l p-4 xl:w-80">
         <p className="text-text-secondary text-sm">
           Wähle ein Element aus, um seine Eigenschaften zu bearbeiten.
         </p>
@@ -42,7 +42,7 @@ export function PropertiesPanel({ workspaceId, formId }: { workspaceId: string; 
     const page = definition.pages.find((p) => p.id === selected.pageId);
     if (!page) return null;
     return (
-      <aside className="border-border bg-surface w-80 shrink-0 space-y-5 overflow-y-auto border-l p-4">
+      <aside className="border-border bg-surface w-72 shrink-0 space-y-5 overflow-y-auto border-l p-4 xl:w-80">
         <h2 className="text-text-primary text-sm font-semibold">Seiteneinstellungen</h2>
         <div className="space-y-1.5">
           <Label htmlFor="page-title">Überschrift</Label>
@@ -73,7 +73,7 @@ export function PropertiesPanel({ workspaceId, formId }: { workspaceId: string; 
     field.type === "heading" || field.type === "paragraph" || field.type === "divider";
 
   return (
-    <aside className="border-border bg-surface w-80 shrink-0 space-y-5 overflow-y-auto border-l p-4">
+    <aside className="border-border bg-surface w-72 shrink-0 space-y-5 overflow-y-auto border-l p-4 xl:w-80">
       <h2 className="text-text-primary text-sm font-semibold">Eigenschaften</h2>
 
       {field.type === "divider" ? (

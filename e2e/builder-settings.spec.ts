@@ -20,7 +20,7 @@ test("editing page title/description via the settings icon updates the tab", asy
   await expect(page.getByText("Seiteneinstellungen")).toBeVisible();
 
   await page.getByLabel("Überschrift").fill("Kontaktdaten");
-  await expect(page.getByRole("button", { name: "Kontaktdaten" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Kontaktdaten" })).toBeVisible();
 });
 
 test("changing the progress display mode in form settings persists", async ({ page }) => {

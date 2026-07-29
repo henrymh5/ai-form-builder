@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { useBuilderStore } from "@/features/form-builder/builder-store";
 import { FieldCanvasPreview } from "@/features/form-builder/field-canvas-preview";
+import { useDragScroll } from "@/features/form-builder/use-drag-scroll";
 import {
   CANVAS_DROPZONE_PREFIX,
   FIELD_PREFIX,
@@ -32,32 +33,92 @@ export function BuilderCanvas() {
   const currentPage = definition.pages.find((p) => p.id === currentPageId) ?? definition.pages[0];
 
   return (
-    <main className="bg-background flex-1 overflow-y-auto">
-      <div className="border-border bg-surface flex items-center gap-1 overflow-x-auto border-b px-4 py-2">
-        {definition.pages.map((page, index) => (
+    <main className="bg-background flex min-w-0 flex-1 flex-col overflow-hidden">
+      <PageTabStrip
+        pages={definition.pages}
+        currentPageId={currentPage?.id}
+        canRemove={definition.pages.length > 1}
+        onSelect={setCurrentPage}
+        onRemove={removePage}
+        onDuplicate={duplicatePage}
+        onEditSettings={(pageId) => {
+          setCurrentPage(pageId);
+          selectPage(pageId);
+        }}
+        onAddPage={() => addPage()}
+      />
+
+      <div className="flex-1 overflow-y-auto">
+        {currentPage ? <CanvasDropzone page={currentPage} /> : null}
+      </div>
+    </main>
+  );
+}
+
+/**
+ * Horizontally scrollable page tabs. Once the tabs overflow, the strip can be dragged with the
+ * pointer; the scrollbar itself stays hidden so the toolbar keeps its clean single-row height.
+ */
+function PageTabStrip({
+  pages,
+  currentPageId,
+  canRemove,
+  onSelect,
+  onRemove,
+  onDuplicate,
+  onEditSettings,
+  onAddPage,
+}: {
+  pages: { id: string; title?: string }[];
+  currentPageId: string | undefined;
+  canRemove: boolean;
+  onSelect: (pageId: string) => void;
+  onRemove: (pageId: string) => void;
+  onDuplicate: (pageId: string) => void;
+  onEditSettings: (pageId: string) => void;
+  onAddPage: () => void;
+}) {
+  const { ref, isDragging, isScrollable, onPointerDown, atStart, atEnd } =
+    useDragScroll<HTMLDivElement>();
+
+  return (
+    <div className="border-border bg-surface flex shrink-0 items-center gap-2 border-b px-4 py-2">
+      <div
+        ref={ref}
+        onPointerDown={onPointerDown}
+        role="tablist"
+        aria-label="Formularseiten"
+        aria-orientation="horizontal"
+        // Fades hint at clipped tabs on whichever side still has content to scroll to.
+        data-fade-start={isScrollable && !atStart ? "" : undefined}
+        data-fade-end={isScrollable && !atEnd ? "" : undefined}
+        className={cn(
+          "tab-strip-fade flex min-w-0 flex-1 scrollbar-none items-center gap-1 overflow-x-auto",
+          isScrollable && (isDragging ? "cursor-grabbing" : "cursor-grab"),
+        )}
+      >
+        {pages.map((page, index) => (
           <PageTab
             key={page.id}
             pageId={page.id}
             label={page.title || `Seite ${index + 1}`}
-            isActive={page.id === currentPage?.id}
-            canRemove={definition.pages.length > 1}
-            onSelect={() => setCurrentPage(page.id)}
-            onRemove={() => removePage(page.id)}
-            onDuplicate={() => duplicatePage(page.id)}
-            onEditSettings={() => {
-              setCurrentPage(page.id);
-              selectPage(page.id);
-            }}
+            isActive={page.id === currentPageId}
+            canRemove={canRemove}
+            suppressClick={isDragging}
+            onSelect={() => onSelect(page.id)}
+            onRemove={() => onRemove(page.id)}
+            onDuplicate={() => onDuplicate(page.id)}
+            onEditSettings={() => onEditSettings(page.id)}
           />
         ))}
-        <Button variant="ghost" size="sm" onClick={() => addPage()}>
-          <Plus className="size-4" />
-          Seite
-        </Button>
       </div>
 
-      {currentPage ? <CanvasDropzone page={currentPage} /> : null}
-    </main>
+      <div className="bg-border h-5 w-px shrink-0" aria-hidden />
+      <Button variant="ghost" size="sm" className="shrink-0" onClick={onAddPage}>
+        <Plus className="size-4" />
+        Seite
+      </Button>
+    </div>
   );
 }
 
@@ -66,6 +127,7 @@ function PageTab({
   label,
   isActive,
   canRemove,
+  suppressClick,
   onSelect,
   onRemove,
   onDuplicate,
@@ -75,6 +137,7 @@ function PageTab({
   label: string;
   isActive: boolean;
   canRemove: boolean;
+  suppressClick: boolean;
   onSelect: () => void;
   onRemove: () => void;
   onDuplicate: () => void;
@@ -83,10 +146,16 @@ function PageTab({
   const { setNodeRef, isOver } = useDroppable({ id: `${PAGE_TAB_PREFIX}${pageId}` });
 
   return (
-    <div ref={setNodeRef} className="group relative flex items-center">
+    <div ref={setNodeRef} className="group relative flex shrink-0 items-center">
       <button
         type="button"
-        onClick={onSelect}
+        role="tab"
+        aria-selected={isActive}
+        onClick={() => {
+          // A pointer drag of the strip ends in a click on whichever tab sat under the cursor.
+          if (suppressClick) return;
+          onSelect();
+        }}
         className={cn(
           "rounded-md px-3 py-1.5 text-sm whitespace-nowrap",
           isActive
@@ -141,7 +210,10 @@ function CanvasDropzone({ page }: { page: { id: string; fields: Field[] } }) {
   const fieldIds = page.fields.map((f) => `${FIELD_PREFIX}${f.id}`);
 
   return (
-    <div ref={setNodeRef} className="mx-auto max-w-2xl space-y-3 p-8">
+    <div
+      ref={setNodeRef}
+      className="mx-auto w-full max-w-(--builder-canvas-max) space-y-3 p-4 sm:p-6 lg:p-8"
+    >
       <SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>
         {page.fields.length === 0 ? (
           <Card className="border-dashed py-12 text-center">

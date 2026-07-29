@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { CreateFormDialog } from "@/features/form-builder/create-form-dialog";
 import { FormCard } from "@/features/form-builder/form-card";
 import { FormsToolbar } from "@/features/form-builder/forms-toolbar";
+import { EmailConfirmedToast } from "@/features/workspaces/email-confirmed-toast";
 import { getCurrentUser } from "@/lib/db/repositories/profile";
 import { listForms, type FormStatus } from "@/lib/db/repositories/forms";
 import { listMyWorkspaces } from "@/lib/db/repositories/workspaces";
@@ -11,7 +12,7 @@ const VALID_STATUSES: FormStatus[] = ["draft", "published", "paused", "archived"
 const VALID_SORTS = ["updated_desc", "created_desc", "responses_desc"] as const;
 
 interface DashboardPageProps {
-  searchParams: Promise<{ status?: string; search?: string; sort?: string }>;
+  searchParams: Promise<{ status?: string; search?: string; sort?: string; confirmed?: string }>;
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -36,6 +37,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <div className="space-y-6">
+      <EmailConfirmedToast />
       <div className="flex items-center justify-between">
         <h1 className="text-text-primary text-2xl font-semibold">Formulare</h1>
         <CreateFormDialog workspaceId={workspace.id} />

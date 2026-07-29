@@ -86,6 +86,8 @@
   --layout-properties-width: 320px;
   --layout-content-max: 1200px;
   --layout-header-height: 56px;
+  /* Builder canvas sheet — grows with the viewport up to the plan's 720px reading width (§23.9). */
+  --builder-canvas-max: 720px;
 }
 
 @theme inline {
@@ -152,6 +154,46 @@ body {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/* Scrollable strips that are driven by drag/keyboard instead of a visible scrollbar. */
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/*
+ * Soft edge fades on a drag-scrolled strip, signalling that tabs continue past the clip.
+ * Driven by `data-fade-start`/`data-fade-end`, which the caller sets from scroll position.
+ */
+@utility tab-strip-fade {
+  --tab-fade-size: 24px;
+  /* Each side is its own opaque-by-default gradient; a data attribute swaps in the fade. */
+  --tab-fade-left: linear-gradient(to right, black, black);
+  --tab-fade-right: linear-gradient(to left, black, black);
+
+  mask-image: var(--tab-fade-left), var(--tab-fade-right);
+  mask-size:
+    50% 100%,
+    50% 100%;
+  mask-position:
+    left center,
+    right center;
+  mask-repeat: no-repeat;
+  /* The two layers tile the strip side by side, so union keeps each half's own fade. */
+  mask-composite: add;
+
+  &[data-fade-start] {
+    --tab-fade-left: linear-gradient(to right, transparent, black var(--tab-fade-size));
+  }
+
+  &[data-fade-end] {
+    --tab-fade-right: linear-gradient(to left, transparent, black var(--tab-fade-size));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

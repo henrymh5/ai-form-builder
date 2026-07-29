@@ -132,7 +132,7 @@ function PaletteItem({
 /** Left sidebar: all available field types (plan §5 "Linke Seitenleiste"). */
 export function FieldPalette() {
   return (
-    <aside className="border-border bg-surface w-72 shrink-0 space-y-4 overflow-y-auto border-r p-4">
+    <aside className="border-border bg-surface w-56 shrink-0 space-y-4 overflow-y-auto border-r p-3 xl:w-72 xl:p-4">
       <PaletteGroup title="Eingabefelder" items={INPUT_FIELDS} />
       <PaletteGroup title="Auswahlfelder" items={CHOICE_FIELDS} />
       <PaletteGroup title="Erweiterte Felder" items={ADVANCED_FIELDS} />

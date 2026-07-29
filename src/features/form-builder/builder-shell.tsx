@@ -42,7 +42,10 @@ export function BuilderShell({
   if (!storeDefinition) return null;
 
   return (
-    <div className="-m-8 flex h-[calc(100vh-var(--layout-header-height))] flex-col">
+    <div
+      data-full-bleed
+      className="flex h-[calc(100vh-var(--layout-header-height))] min-w-0 flex-col"
+    >
       <BuilderToolbar
         formId={formId}
         title={title}

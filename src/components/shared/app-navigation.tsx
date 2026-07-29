@@ -11,9 +11,15 @@ const NAV_ITEMS = [
   { href: "/workspace", label: "Workspace", icon: Users },
 ] as const;
 
+/** Matches the builder route (`/forms/<id>`) but not its sub-pages (responses, analytics). */
+const BUILDER_ROUTE = /^\/forms\/[^/]+$/;
+
 /** Compact sidebar navigation — Style-Guide §23.10/§23.5. */
 export function AppNavigation() {
   const pathname = usePathname();
+
+  // The builder is a full-width workspace (plan §23.9) — it owns its own back link instead.
+  if (BUILDER_ROUTE.test(pathname)) return null;
 
   return (
     <nav className="border-border bg-surface flex w-(--layout-sidebar-width) shrink-0 flex-col gap-1 border-r p-3">
