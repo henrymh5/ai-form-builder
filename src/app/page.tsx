@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/shared/logo";
+import { getCurrentUser } from "@/lib/db/repositories/profile";
 
 const FEATURES = [
   {
@@ -38,7 +39,9 @@ const FEATURES = [
   },
 ] as const;
 
-export default function Home() {
+export default async function Home() {
+  const user = await getCurrentUser();
+
   return (
     <div className="bg-background flex flex-1 flex-col items-center px-6 py-16">
       <div className="w-full max-w-3xl space-y-12 text-center">
@@ -50,12 +53,20 @@ export default function Home() {
             bearbeiten, veröffentlichen und auswerten.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Button asChild variant="primary" size="lg">
-              <Link href="/register">Kostenlos ausprobieren</Link>
-            </Button>
-            <Button asChild variant="secondary" size="lg">
-              <Link href="/login">Anmelden</Link>
-            </Button>
+            {user ? (
+              <Button asChild variant="primary" size="lg">
+                <Link href="/dashboard">Zum Dashboard</Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild variant="primary" size="lg">
+                  <Link href="/register">Kostenlos ausprobieren</Link>
+                </Button>
+                <Button asChild variant="secondary" size="lg">
+                  <Link href="/login">Anmelden</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
