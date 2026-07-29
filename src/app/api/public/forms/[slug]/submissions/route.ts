@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   getPublishedFormBySlug,
@@ -10,6 +10,7 @@ import { getFieldVisibility } from "@/lib/logic-engine/visibility";
 import { answersFor, type AnswerMap } from "@/lib/logic-engine/evaluate";
 import { compilePageSchema } from "@/lib/validation/compile-page";
 import { AppError, isAppError } from "@/lib/errors";
+import { enqueueWorkflowRuns, executeWorkflowRun } from "@/lib/workflow-engine/run";
 
 const MAX_PAYLOAD_BYTES = 100_000;
 
@@ -106,6 +107,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ slu
         sessionId: parsed.data.sessionId,
         eventType: "submit",
       });
+
+      // Enqueue synchronously so a queued run row exists even if the process
+      // dies before after() runs (retryable from the runs UI); the actual
+      // execution happens after the response is sent, never blocking the
+      // visitor. isTest submissions never trigger workflows (plan §6/§13).
+      if (!parsed.data.isTest) {
+        const runIds = await enqueueWorkflowRuns({
+          formId: form.formId,
+          responseId: result.responseId,
+        });
+        after(async () => {
+          for (const runId of runIds) {
+            await executeWorkflowRun(runId).catch(() => {
+              // Execution failures are recorded on the run itself (finishWorkflowRun);
+              // nothing else to do here — this is a fire-and-forget background task.
+            });
+          }
+        });
+      }
     }
 
     return NextResponse.json({ responseId: result.responseId });

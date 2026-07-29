@@ -17,6 +17,7 @@ export type AppErrorCode =
   | "AI_REFUSED"
   | "AI_TIMEOUT"
   | "AI_UPSTREAM"
+  | "CONFIG_ERROR"
   | "INTERNAL_ERROR";
 
 const STATUS_BY_CODE: Record<AppErrorCode, number> = {
@@ -31,6 +32,7 @@ const STATUS_BY_CODE: Record<AppErrorCode, number> = {
   AI_REFUSED: 502,
   AI_TIMEOUT: 504,
   AI_UPSTREAM: 502,
+  CONFIG_ERROR: 500,
   INTERNAL_ERROR: 500,
 };
 

@@ -483,6 +483,176 @@ export type Database = {
           },
         ];
       };
+      workflow_run_steps: {
+        Row: {
+          error_message: string | null;
+          finished_at: string | null;
+          id: string;
+          input: Json | null;
+          node_id: string;
+          node_type: string;
+          output: Json | null;
+          run_id: string;
+          started_at: string;
+          status: string;
+        };
+        Insert: {
+          error_message?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          input?: Json | null;
+          node_id: string;
+          node_type: string;
+          output?: Json | null;
+          run_id: string;
+          started_at?: string;
+          status: string;
+        };
+        Update: {
+          error_message?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          input?: Json | null;
+          node_id?: string;
+          node_type?: string;
+          output?: Json | null;
+          run_id?: string;
+          started_at?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workflow_run_steps_run_id_fkey";
+            columns: ["run_id"];
+            isOneToOne: false;
+            referencedRelation: "workflow_runs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      workflow_runs: {
+        Row: {
+          attempt: number;
+          claimed_at: string | null;
+          created_at: string;
+          definition_snapshot: Json;
+          error_code: string | null;
+          error_message: string | null;
+          finished_at: string | null;
+          form_id: string;
+          id: string;
+          is_test: boolean;
+          response_id: string;
+          started_at: string | null;
+          status: string;
+          trigger_type: string;
+          workflow_id: string;
+        };
+        Insert: {
+          attempt?: number;
+          claimed_at?: string | null;
+          created_at?: string;
+          definition_snapshot: Json;
+          error_code?: string | null;
+          error_message?: string | null;
+          finished_at?: string | null;
+          form_id: string;
+          id?: string;
+          is_test?: boolean;
+          response_id: string;
+          started_at?: string | null;
+          status?: string;
+          trigger_type?: string;
+          workflow_id: string;
+        };
+        Update: {
+          attempt?: number;
+          claimed_at?: string | null;
+          created_at?: string;
+          definition_snapshot?: Json;
+          error_code?: string | null;
+          error_message?: string | null;
+          finished_at?: string | null;
+          form_id?: string;
+          id?: string;
+          is_test?: boolean;
+          response_id?: string;
+          started_at?: string | null;
+          status?: string;
+          trigger_type?: string;
+          workflow_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workflow_runs_form_id_fkey";
+            columns: ["form_id"];
+            isOneToOne: false;
+            referencedRelation: "forms";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "workflow_runs_response_id_fkey";
+            columns: ["response_id"];
+            isOneToOne: false;
+            referencedRelation: "responses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "workflow_runs_workflow_id_fkey";
+            columns: ["workflow_id"];
+            isOneToOne: false;
+            referencedRelation: "workflows";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      workflows: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          definition: Json;
+          form_id: string;
+          id: string;
+          name: string;
+          schema_version: number;
+          status: string;
+          updated_at: string;
+          webhook_secret: string | null;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          definition: Json;
+          form_id: string;
+          id?: string;
+          name: string;
+          schema_version?: number;
+          status?: string;
+          updated_at?: string;
+          webhook_secret?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          definition?: Json;
+          form_id?: string;
+          id?: string;
+          name?: string;
+          schema_version?: number;
+          status?: string;
+          updated_at?: string;
+          webhook_secret?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "workflows_form_id_fkey";
+            columns: ["form_id"];
+            isOneToOne: false;
+            referencedRelation: "forms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       workspace_members: {
         Row: {
           created_at: string;

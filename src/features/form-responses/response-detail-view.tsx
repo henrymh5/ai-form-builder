@@ -9,12 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import type { FormDefinition, Field } from "@/lib/form-schema/schema";
 import { hasOptions } from "@/lib/form-schema/schema";
 import type { ResponseDetail, ResponseStatus } from "@/lib/db/repositories/responses";
+import type { RunForResponse } from "@/lib/db/repositories/workflow-runs";
 import {
   archiveResponseAction,
   deleteResponseAction,
   setResponseNoteAction,
   unarchiveResponseAction,
 } from "@/features/form-responses/actions/response-actions";
+import { TriggeredWorkflowsCard } from "@/features/form-responses/triggered-workflows-card";
 
 type AnswerableField = Exclude<Field, { type: "heading" | "paragraph" | "divider" | "hidden" }>;
 
@@ -63,10 +65,12 @@ export function ResponseDetailView({
   formId,
   response,
   definition,
+  workflowRuns,
 }: {
   formId: string;
   response: ResponseDetail;
   definition: FormDefinition;
+  workflowRuns: RunForResponse[];
 }) {
   const router = useRouter();
   const [note, setNote] = useState(response.note ?? "");
@@ -144,6 +148,8 @@ export function ResponseDetailView({
           );
         })}
       </Card>
+
+      <TriggeredWorkflowsCard formId={formId} runs={workflowRuns} />
 
       <Card className="space-y-3">
         <CardTitle>Notiz</CardTitle>

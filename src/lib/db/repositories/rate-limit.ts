@@ -47,3 +47,14 @@ export const AI_RATE_LIMITS = {
   perWorkspaceMinute: { scope: "ai:workspace:minute", windowMs: 60_000, max: 30 },
   perUserDaily: { scope: "ai:user:day", windowMs: 86_400_000, max: 100 },
 } as const satisfies Record<string, RateLimitConfig>;
+
+/**
+ * The workflow "aiAction" node calls Claude without a human clicking a
+ * button (it runs on every matching form submission), so it needs its own,
+ * workspace-scoped cap independent of the Builder's AI-generation limits.
+ */
+export const WORKFLOW_AI_ACTION_RATE_LIMIT: RateLimitConfig = {
+  scope: "workflow:ai:workspace:minute",
+  windowMs: 60_000,
+  max: 30,
+};
