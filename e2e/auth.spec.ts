@@ -22,12 +22,15 @@ test("a new user can register and lands on the dashboard with their workspace", 
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
   await expect(page.getByText("Noch keine Formulare")).toBeVisible();
 
-  await page.getByRole("link", { name: "Workspace" }).click();
+  // `exact` disambiguates the sidebar link from the header's workspace link, whose
+  // accessible name also contains the workspace name and role badge.
+  await page.getByRole("link", { name: "Workspace", exact: true }).click();
   await expect(page).toHaveURL(/\/workspace/);
   await expect(page.getByRole("heading", { name: `${displayName}s Workspace` })).toBeVisible();
   await expect(page.getByText(displayName).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Abmelden" }).click();
+  await page.getByRole("button", { name: /Konto-Menü/ }).click();
+  await page.getByRole("menuitem", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/\/login/);
 });
 
@@ -77,7 +80,8 @@ test("a user can log in and log out", async ({ page }) => {
   await page.getByRole("button", { name: "Konto erstellen" }).click();
   await expect(page).toHaveURL(/\/dashboard/);
 
-  await page.getByRole("button", { name: "Abmelden" }).click();
+  await page.getByRole("button", { name: /Konto-Menü/ }).click();
+  await page.getByRole("menuitem", { name: "Abmelden" }).click();
   await expect(page).toHaveURL(/\/login/);
 
   await page.getByLabel("E-Mail-Adresse").fill(email);
