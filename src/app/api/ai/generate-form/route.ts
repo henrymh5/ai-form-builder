@@ -9,7 +9,7 @@ import { toFormDefinition } from "@/lib/ai/convert";
 import { CURRENT_SCHEMA_VERSION } from "@/lib/form-schema/schema";
 import { validateFormDefinition, isValid } from "@/lib/form-schema/validate";
 import { logicEngineGraphAnalysis } from "@/lib/logic-engine/wire-validation";
-import { checkRateLimit, AI_RATE_LIMITS } from "@/lib/db/repositories/rate-limit";
+import { checkRateLimit, refundRateLimit, AI_RATE_LIMITS } from "@/lib/db/repositories/rate-limit";
 import { AppError, isAppError } from "@/lib/errors";
 
 const requestSchema = z.object({
@@ -27,6 +27,10 @@ export const maxDuration = 60;
  * `toFormDefinition` -> saved as a new draft form -> builder opens it.
  */
 export async function POST(request: Request) {
+  // Set once the monthly quota has been consumed, so the catch block knows whether there
+  // is a reservation to release. Stays null when the quota check itself rejected.
+  let quotaConsumedBy: string | null = null;
+
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -45,6 +49,10 @@ export async function POST(request: Request) {
       throw new AppError("FORBIDDEN", "Keine Berechtigung für diesen Workspace.");
     }
 
+    // Monthly quota first: a user who is out of generations should be told that, rather
+    // than getting the generic "too many requests" from a burst limiter they also tripped.
+    await checkRateLimit(AI_RATE_LIMITS.formGenerationPerUserMonth, user.id);
+    quotaConsumedBy = user.id;
     await checkRateLimit(AI_RATE_LIMITS.perUserMinute, user.id);
     await checkRateLimit(AI_RATE_LIMITS.perWorkspaceMinute, workspace.id);
     await checkRateLimit(AI_RATE_LIMITS.perUserDaily, user.id);
@@ -90,6 +98,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ formId: form.id });
   } catch (error) {
+    // The attempt failed after the quota was consumed — give the generation back rather
+    // than charging the user for an outage or a bad model response.
+    if (quotaConsumedBy) {
+      await refundRateLimit(AI_RATE_LIMITS.formGenerationPerUserMonth, quotaConsumedBy);
+    }
+
     if (isAppError(error)) {
       return NextResponse.json(error.toResponseBody(), { status: error.status });
     }
