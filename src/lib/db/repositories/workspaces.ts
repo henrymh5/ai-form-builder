@@ -1,5 +1,7 @@
 import "server-only";
+import { cache } from "react";
 import { AppError } from "@/lib/errors";
+import { getAuthUser } from "@/lib/db/auth-user";
 import { createUserClient } from "@/lib/db/user-client";
 
 export interface WorkspaceSummary {
@@ -9,16 +11,19 @@ export interface WorkspaceSummary {
   role: "owner" | "editor" | "viewer";
 }
 
-/** Workspaces the current user is a member of, with their role in each. */
-export async function listMyWorkspaces(): Promise<WorkspaceSummary[]> {
-  const supabase = await createUserClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/**
+ * Workspaces the current user is a member of, with their role in each.
+ *
+ * Request-scoped via `cache()` for the same reason as {@link getCurrentUser}: the app
+ * layout's topbar and every page below it need this list.
+ */
+export const listMyWorkspaces = cache(async (): Promise<WorkspaceSummary[]> => {
+  const user = await getAuthUser();
   if (!user) {
     throw new AppError("UNAUTHENTICATED", "Nicht angemeldet.");
   }
 
+  const supabase = await createUserClient();
   const { data, error } = await supabase
     .from("workspace_members")
     .select("role, workspaces(id, name, slug)")
@@ -41,7 +46,7 @@ export async function listMyWorkspaces(): Promise<WorkspaceSummary[]> {
       slug: row.workspaces.slug,
       role: row.role,
     }));
-}
+});
 
 export interface WorkspaceMember {
   userId: string;
