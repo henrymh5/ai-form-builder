@@ -1,12 +1,7 @@
 import { evaluateCondition } from "@/lib/logic-engine/evaluate";
 import type { Condition } from "@/lib/form-schema/conditions";
 import type { WorkflowEdge, WorkflowNode } from "@/lib/workflow-schema/schema";
-import type {
-  ActionRegistry,
-  InterpreterResult,
-  RunContext,
-  WorkflowStepEvent,
-} from "./context";
+import type { ActionRegistry, InterpreterResult, RunContext, WorkflowStepEvent } from "./context";
 
 /**
  * Pure graph-walking interpreter — no DB access, testable with a mock action
@@ -46,7 +41,10 @@ function nextNode(
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   let timeoutHandle: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
-    timeoutHandle = setTimeout(() => reject(new Error(`Zeitüberschreitung bei "${label}".`)), timeoutMs);
+    timeoutHandle = setTimeout(
+      () => reject(new Error(`Zeitüberschreitung bei "${label}".`)),
+      timeoutMs,
+    );
   });
   try {
     return await Promise.race([promise, timeout]);
@@ -67,7 +65,12 @@ export async function runWorkflowGraph(params: RunGraphParams): Promise<Interpre
   };
 
   if (!trigger) {
-    return { status: "failed", errorCode: "NO_TRIGGER", errorMessage: "Kein Trigger-Knoten gefunden.", steps };
+    return {
+      status: "failed",
+      errorCode: "NO_TRIGGER",
+      errorMessage: "Kein Trigger-Knoten gefunden.",
+      steps,
+    };
   }
 
   let current: WorkflowNode | undefined = nextNode(trigger.id, "out", edges, nodeById);

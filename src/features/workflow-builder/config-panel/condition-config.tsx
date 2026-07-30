@@ -4,8 +4,18 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { OPERATORS_BY_FIELD_TYPE, type ConditionRule, type Operator } from "@/lib/form-schema/conditions";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  OPERATORS_BY_FIELD_TYPE,
+  type ConditionRule,
+  type Operator,
+} from "@/lib/form-schema/conditions";
 import { isAnswerableField, type Field } from "@/lib/form-schema/fields";
 import type { WorkflowNode } from "@/lib/workflow-schema/schema";
 import type { WorkflowFormRef } from "@/lib/workflow-schema/validate";
@@ -123,7 +133,9 @@ export function ConditionConfigForm({
                   </Select>
                   {needsValue ? (
                     <Input
-                      value={typeof rule.value === "string" ? rule.value : (rule.value?.toString() ?? "")}
+                      value={
+                        typeof rule.value === "string" ? rule.value : (rule.value?.toString() ?? "")
+                      }
                       onChange={(e) => updateRule(index, { value: e.target.value })}
                       placeholder="Wert"
                     />
@@ -144,7 +156,13 @@ export function ConditionConfigForm({
         })}
       </div>
 
-      <Button type="button" variant="secondary" size="sm" onClick={addRule} disabled={fields.length === 0}>
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={addRule}
+        disabled={fields.length === 0}
+      >
         <Plus className="size-4" />
         Bedingung hinzufügen
       </Button>

@@ -3,7 +3,11 @@ import { AppError } from "@/lib/errors";
 import { isAnswerableField } from "@/lib/form-schema/fields";
 import type { FormDefinition } from "@/lib/form-schema/schema";
 import { generateWorkflowId } from "@/lib/workflow-schema/ids";
-import { CURRENT_WORKFLOW_SCHEMA_VERSION, type WorkflowDefinition, type WorkflowNode } from "@/lib/workflow-schema/schema";
+import {
+  CURRENT_WORKFLOW_SCHEMA_VERSION,
+  type WorkflowDefinition,
+  type WorkflowNode,
+} from "@/lib/workflow-schema/schema";
 import type { AiWorkflowNode, GenerateWorkflowOutput } from "@/lib/ai/workflow-schemas";
 
 /**
@@ -135,10 +139,7 @@ export function toWorkflowDefinition(
   };
 }
 
-function layoutNodes(
-  nodes: WorkflowNode[],
-  edges: WorkflowDefinition["edges"],
-): WorkflowNode[] {
+function layoutNodes(nodes: WorkflowNode[], edges: WorkflowDefinition["edges"]): WorkflowNode[] {
   const graph = new dagre.graphlib.Graph();
   graph.setGraph({ rankdir: "TB", nodesep: 60, ranksep: 80 });
   graph.setDefaultEdgeLabel(() => ({}));

@@ -38,7 +38,13 @@ export const runWebhookAction: ActionHandler = async (node, ctx) => {
   const rawBody = JSON.stringify(payload);
 
   if (ctx.dryRun) {
-    return { output: { simulated: true, url: config.url, bodyExcerpt: rawBody.slice(0, MAX_BODY_EXCERPT_LENGTH) } };
+    return {
+      output: {
+        simulated: true,
+        url: config.url,
+        bodyExcerpt: rawBody.slice(0, MAX_BODY_EXCERPT_LENGTH),
+      },
+    };
   }
 
   const timestamp = Date.now().toString();
@@ -48,7 +54,8 @@ export const runWebhookAction: ActionHandler = async (node, ctx) => {
     "x-formcraft-timestamp": timestamp,
   };
   if (secret) {
-    headers["x-formcraft-signature"] = `sha256=${signWebhookPayload(`${timestamp}.${rawBody}`, secret)}`;
+    headers["x-formcraft-signature"] =
+      `sha256=${signWebhookPayload(`${timestamp}.${rawBody}`, secret)}`;
   }
 
   const response = await fetch(config.url, {

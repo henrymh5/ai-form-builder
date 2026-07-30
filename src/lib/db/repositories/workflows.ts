@@ -2,7 +2,10 @@ import "server-only";
 import { customAlphabet } from "nanoid";
 import { AppError } from "@/lib/errors";
 import { createUserClient } from "@/lib/db/user-client";
-import { CURRENT_WORKFLOW_SCHEMA_VERSION, type WorkflowDefinition } from "@/lib/workflow-schema/schema";
+import {
+  CURRENT_WORKFLOW_SCHEMA_VERSION,
+  type WorkflowDefinition,
+} from "@/lib/workflow-schema/schema";
 import { createEmptyWorkflowDefinition } from "@/lib/workflow-schema/factory";
 
 /**
@@ -235,10 +238,7 @@ export async function renameWorkflow(workflowId: string, name: string): Promise<
   }
 }
 
-export async function setWorkflowStatus(
-  workflowId: string,
-  status: WorkflowStatus,
-): Promise<void> {
+export async function setWorkflowStatus(workflowId: string, status: WorkflowStatus): Promise<void> {
   const supabase = await createUserClient();
   const { error } = await supabase.from("workflows").update({ status }).eq("id", workflowId);
   if (error) {

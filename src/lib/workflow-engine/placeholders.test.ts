@@ -81,8 +81,8 @@ describe("resolvePlaceholders", () => {
     const ctx = makeContext({
       rawAnswers: [{ fieldId: "fld_budget", fieldType: "number", value: 5000 }],
     });
-    expect(resolvePlaceholders("Hallo, Budget ist {{field:fld_budget}} für {{form:title}}.", ctx)).toBe(
-      "Hallo, Budget ist 5000 für Testformular.",
-    );
+    expect(
+      resolvePlaceholders("Hallo, Budget ist {{field:fld_budget}} für {{form:title}}.", ctx),
+    ).toBe("Hallo, Budget ist 5000 für Testformular.");
   });
 });

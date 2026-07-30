@@ -34,8 +34,7 @@ export function checkWebhookUrl(rawUrl: string): WebhookUrlCheck {
     return { ok: false, reason: "Ungültige URL." };
   }
 
-  const allowedProtocols =
-    process.env.NODE_ENV === "production" ? ["https:"] : ["https:", "http:"];
+  const allowedProtocols = process.env.NODE_ENV === "production" ? ["https:"] : ["https:", "http:"];
   if (!allowedProtocols.includes(url.protocol)) {
     return { ok: false, reason: "Webhook-URLs müssen https verwenden." };
   }

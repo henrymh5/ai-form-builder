@@ -7,7 +7,11 @@ import { createWorkflow } from "@/lib/db/repositories/workflows";
 import { generateWorkflow } from "@/lib/ai/functions/generate-workflow";
 import { generateWorkflowInputSchema } from "@/lib/ai/workflow-schemas";
 import { toWorkflowDefinition } from "@/lib/ai/convert-workflow";
-import { validateWorkflowDefinition, isWorkflowValid, type WorkflowFormRef } from "@/lib/workflow-schema/validate";
+import {
+  validateWorkflowDefinition,
+  isWorkflowValid,
+  type WorkflowFormRef,
+} from "@/lib/workflow-schema/validate";
 import { checkRateLimit, AI_RATE_LIMITS } from "@/lib/db/repositories/rate-limit";
 import { AppError, isAppError } from "@/lib/errors";
 
@@ -71,7 +75,11 @@ export async function POST(request: Request) {
     // schema already shaped Claude's output; this checks structural rules
     // (single trigger, acyclic, valid handles, field references) the same
     // way a hand-built workflow would be checked.
-    const formRef: WorkflowFormRef = { id: form.id, title: form.title, definition: form.draftDefinition };
+    const formRef: WorkflowFormRef = {
+      id: form.id,
+      title: form.title,
+      definition: form.draftDefinition,
+    };
     const validation = validateWorkflowDefinition(definition, [formRef]);
     if (!isWorkflowValid(validation)) {
       throw new AppError("AI_INVALID_OUTPUT", "Der generierte Workflow ist ungültig.", {

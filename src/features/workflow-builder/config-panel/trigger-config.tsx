@@ -48,7 +48,10 @@ export function TriggerConfigForm({
                 checked={selected.has(form.id)}
                 onCheckedChange={(checked) => toggle(form.id, checked === true)}
               />
-              <Label htmlFor={`trigger-form-${form.id}`} className="text-text-primary text-sm font-normal">
+              <Label
+                htmlFor={`trigger-form-${form.id}`}
+                className="text-text-primary text-sm font-normal"
+              >
                 {form.title}
               </Label>
             </div>

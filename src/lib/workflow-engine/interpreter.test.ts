@@ -43,7 +43,11 @@ function makeContext(overrides: Partial<RunContext> = {}): RunContext {
   };
 }
 
-function edge(source: string, target: string, sourceHandle: WorkflowEdge["sourceHandle"] = "out"): WorkflowEdge {
+function edge(
+  source: string,
+  target: string,
+  sourceHandle: WorkflowEdge["sourceHandle"] = "out",
+): WorkflowEdge {
   return { id: generateWorkflowId("edge"), source, target, sourceHandle };
 }
 
@@ -88,7 +92,12 @@ describe("runWorkflowGraph", () => {
     expect(result.status).toBe("succeeded");
     expect(handler).toHaveBeenCalledTimes(1);
     expect(result.steps).toEqual([
-      { nodeId: action.id, nodeType: "responseAction", status: "succeeded", output: { done: true } },
+      {
+        nodeId: action.id,
+        nodeType: "responseAction",
+        status: "succeeded",
+        output: { done: true },
+      },
     ]);
   });
 
@@ -98,7 +107,10 @@ describe("runWorkflowGraph", () => {
       id: generateWorkflowId("node"),
       type: "condition",
       position: { x: 0, y: 0 },
-      config: { logic: "and", rules: [{ fieldId: "fld_budget", operator: "greater_than", value: 1000 }] },
+      config: {
+        logic: "and",
+        rules: [{ fieldId: "fld_budget", operator: "greater_than", value: 1000 }],
+      },
     };
     const trueAction = actionNode("responseAction");
     const falseAction = actionNode("responseAction");
@@ -113,7 +125,8 @@ describe("runWorkflowGraph", () => {
     const falseHandler = vi.fn().mockResolvedValue({});
     // Distinguish by wrapping — registry is keyed by type, so use call args to tell them apart.
     const registry: ActionRegistry = {
-      responseAction: (node) => (node.id === trueAction.id ? trueHandler(node) : falseHandler(node)),
+      responseAction: (node) =>
+        node.id === trueAction.id ? trueHandler(node) : falseHandler(node),
     };
 
     const result = await runWorkflowGraph({
@@ -135,14 +148,14 @@ describe("runWorkflowGraph", () => {
       id: generateWorkflowId("node"),
       type: "condition",
       position: { x: 0, y: 0 },
-      config: { logic: "and", rules: [{ fieldId: "fld_budget", operator: "greater_than", value: 1000 }] },
+      config: {
+        logic: "and",
+        rules: [{ fieldId: "fld_budget", operator: "greater_than", value: 1000 }],
+      },
     };
     const falseAction = actionNode("responseAction");
     def.nodes.push(condition, falseAction);
-    def.edges.push(
-      edge(triggerId(def), condition.id),
-      edge(condition.id, falseAction.id, "false"),
-    );
+    def.edges.push(edge(triggerId(def), condition.id), edge(condition.id, falseAction.id, "false"));
 
     const handler = vi.fn().mockResolvedValue({});
     const result = await runWorkflowGraph({
@@ -162,7 +175,10 @@ describe("runWorkflowGraph", () => {
       id: generateWorkflowId("node"),
       type: "condition",
       position: { x: 0, y: 0 },
-      config: { logic: "and", rules: [{ fieldId: "fld_budget", operator: "greater_than", value: 1000 }] },
+      config: {
+        logic: "and",
+        rules: [{ fieldId: "fld_budget", operator: "greater_than", value: 1000 }],
+      },
     };
     def.nodes.push(condition);
     def.edges.push(edge(triggerId(def), condition.id));
@@ -201,7 +217,12 @@ describe("runWorkflowGraph", () => {
     expect(result.errorCode).toBe("ACTION_FAILED");
     expect(afterHandler).not.toHaveBeenCalled();
     expect(result.steps).toEqual([
-      { nodeId: action.id, nodeType: "responseAction", status: "failed", errorMessage: "Webhook 500" },
+      {
+        nodeId: action.id,
+        nodeType: "responseAction",
+        status: "failed",
+        errorMessage: "Webhook 500",
+      },
     ]);
   });
 

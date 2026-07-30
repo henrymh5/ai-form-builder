@@ -14,7 +14,13 @@ function formWithFields(): FormDefinition {
   const form = createEmptyFormDefinition("Testformular");
   form.pages[0]!.fields = [
     { id: generateId("field"), key: "budget", label: "Budget", required: false, type: "number" },
-    { id: generateId("field"), key: "email", label: "E-Mail-Adresse", required: true, type: "email" },
+    {
+      id: generateId("field"),
+      key: "email",
+      label: "E-Mail-Adresse",
+      required: true,
+      type: "email",
+    },
   ];
   return form;
 }

@@ -25,7 +25,12 @@ export function WorkflowEditorClient({
   const load = useWorkflowEditorStore((s) => s.load);
 
   useEffect(() => {
-    load({ workflowId: workflow.id, workspaceId: workflow.workspaceId, definition: workflow.definition, forms });
+    load({
+      workflowId: workflow.id,
+      workspaceId: workflow.workspaceId,
+      definition: workflow.definition,
+      forms,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: load once per workflow id, not on every store re-render
   }, [workflow.id]);
 

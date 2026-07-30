@@ -180,7 +180,10 @@ function checkAcyclic(definition: WorkflowDefinition, issues: WorkflowValidation
 
   for (const node of definition.nodes) {
     if (color.get(node.id) === "white" && visit(node.id)) {
-      issues.push({ code: "CYCLIC_GRAPH", message: "Die Verbindungen erzeugen einen zyklischen Ablauf." });
+      issues.push({
+        code: "CYCLIC_GRAPH",
+        message: "Die Verbindungen erzeugen einen zyklischen Ablauf.",
+      });
       return;
     }
   }
@@ -232,7 +235,9 @@ function checkFieldReference(
   onUnknown: () => void,
   onPartial: (formsWithout: string[]) => void,
 ): void {
-  const formsWithout = forms.filter((f) => !fieldIdsIn(f.definition).has(fieldId)).map((f) => f.title);
+  const formsWithout = forms
+    .filter((f) => !fieldIdsIn(f.definition).has(fieldId))
+    .map((f) => f.title);
   if (formsWithout.length === forms.length) {
     onUnknown();
   } else if (formsWithout.length > 0) {
@@ -357,7 +362,8 @@ export function validateWorkflowDefinition(
 
   if (forms) {
     const trigger = definition.nodes.find((n) => n.type === "trigger");
-    const triggerFormIds = trigger?.type === "trigger" ? new Set(trigger.config.formIds) : new Set();
+    const triggerFormIds =
+      trigger?.type === "trigger" ? new Set(trigger.config.formIds) : new Set();
     const triggerForms = forms.filter((f) => triggerFormIds.has(f.id));
     checkFieldReferences(definition, triggerForms, warnings);
   }

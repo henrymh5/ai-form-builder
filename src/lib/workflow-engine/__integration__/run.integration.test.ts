@@ -158,7 +158,9 @@ describe("workflow enqueue + execute (integration)", () => {
     return response.id;
   }
 
-  function workflowDefinitionWithResponseAction(triggerFormIds: string[] = [formId]): WorkflowDefinition {
+  function workflowDefinitionWithResponseAction(
+    triggerFormIds: string[] = [formId],
+  ): WorkflowDefinition {
     const triggerId = generateWorkflowId("node");
     const actionId = generateWorkflowId("node");
     return {
@@ -177,7 +179,14 @@ describe("workflow enqueue + execute (integration)", () => {
           config: { action: "append_note", noteText: "Budget: {{field:" + fieldId + "}}" },
         },
       ],
-      edges: [{ id: generateWorkflowId("edge"), source: triggerId, target: actionId, sourceHandle: "out" }],
+      edges: [
+        {
+          id: generateWorkflowId("edge"),
+          source: triggerId,
+          target: actionId,
+          sourceHandle: "out",
+        },
+      ],
     };
   }
 
@@ -202,16 +211,23 @@ describe("workflow enqueue + execute (integration)", () => {
       .single();
     if (workflowError) throw workflowError;
 
-    const { error: triggerError } = await ownerClient
-      .from("workflow_form_triggers")
-      .insert(params.triggerFormIds.map((triggerFormId) => ({ workflow_id: workflow.id, form_id: triggerFormId })));
+    const { error: triggerError } = await ownerClient.from("workflow_form_triggers").insert(
+      params.triggerFormIds.map((triggerFormId) => ({
+        workflow_id: workflow.id,
+        form_id: triggerFormId,
+      })),
+    );
     if (triggerError) throw triggerError;
 
     return workflow.id;
   }
 
   it("enqueues one run per enabled workflow and executes it end-to-end", async () => {
-    const workflowId = await insertWorkflow({ name: "Notiz-Workflow", status: "enabled", triggerFormIds: [formId] });
+    const workflowId = await insertWorkflow({
+      name: "Notiz-Workflow",
+      status: "enabled",
+      triggerFormIds: [formId],
+    });
 
     const responseId = await insertResponse();
 

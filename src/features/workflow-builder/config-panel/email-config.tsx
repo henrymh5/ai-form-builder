@@ -2,7 +2,13 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { WorkflowNode } from "@/lib/workflow-schema/schema";
 import type { WorkflowFormRef } from "@/lib/workflow-schema/validate";
@@ -25,9 +31,7 @@ export function EmailConfigForm({
         <Label>Empfänger</Label>
         <Select
           value={config.to}
-          onValueChange={(value) =>
-            onChange({ ...config, to: value as EmailConfig["to"] })
-          }
+          onValueChange={(value) => onChange({ ...config, to: value as EmailConfig["to"] })}
         >
           <SelectTrigger>
             <SelectValue />

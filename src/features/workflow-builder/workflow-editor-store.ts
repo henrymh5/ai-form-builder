@@ -7,7 +7,11 @@ import {
   type NodeChange,
 } from "@xyflow/react";
 import { generateWorkflowId } from "@/lib/workflow-schema/ids";
-import { allowedHandlesFor, type WorkflowNode, type WorkflowNodeType } from "@/lib/workflow-schema/nodes";
+import {
+  allowedHandlesFor,
+  type WorkflowNode,
+  type WorkflowNodeType,
+} from "@/lib/workflow-schema/nodes";
 import type { WorkflowDefinition } from "@/lib/workflow-schema/schema";
 import {
   validateWorkflowDefinition,
@@ -170,9 +174,7 @@ export const useWorkflowEditorStore = create<WorkflowEditorState>((set, get) => 
   updateNodeConfig: (nodeId, config) => {
     set((state) => ({
       nodes: state.nodes.map((node) =>
-        node.id === nodeId
-          ? { ...node, data: { ...node.data, config } as WorkflowNode }
-          : node,
+        node.id === nodeId ? { ...node, data: { ...node.data, config } as WorkflowNode } : node,
       ),
       dirty: true,
     }));

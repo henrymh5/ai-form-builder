@@ -16,7 +16,10 @@ export interface WorkflowAiActionInput {
   answersText: string;
 }
 
-const TASK_INSTRUCTIONS: Record<WorkflowAiActionInput["task"], (input: WorkflowAiActionInput) => string> = {
+const TASK_INSTRUCTIONS: Record<
+  WorkflowAiActionInput["task"],
+  (input: WorkflowAiActionInput) => string
+> = {
   summarize: () =>
     "Fasse die folgende Formularantwort in maximal 3 prägnanten Sätzen auf Deutsch zusammen.",
   classify: (input) =>

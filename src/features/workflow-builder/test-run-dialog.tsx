@@ -10,7 +10,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { startTestRunAction } from "@/features/workflow-builder/actions/run-actions";
 import { useWorkflowEditorStore } from "./workflow-editor-store";
 
@@ -47,7 +53,9 @@ export function TestRunDialog({
   responses: TestRunResponseOption[];
 }) {
   const [open, setOpen] = useState(false);
-  const [selectedResponseId, setSelectedResponseId] = useState<string | undefined>(responses[0]?.id);
+  const [selectedResponseId, setSelectedResponseId] = useState<string | undefined>(
+    responses[0]?.id,
+  );
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const dirty = useWorkflowEditorStore((s) => s.dirty);

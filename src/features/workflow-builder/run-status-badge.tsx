@@ -15,7 +15,13 @@ const VARIANT: Record<WorkflowRunStatus, "neutral" | "info" | "success" | "error
   failed: "error",
 };
 
-export function RunStatusBadge({ status, className }: { status: WorkflowRunStatus; className?: string }) {
+export function RunStatusBadge({
+  status,
+  className,
+}: {
+  status: WorkflowRunStatus;
+  className?: string;
+}) {
   return (
     <Badge variant={VARIANT[status]} className={className}>
       {LABEL[status]}

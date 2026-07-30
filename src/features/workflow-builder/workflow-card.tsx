@@ -67,7 +67,9 @@ export function WorkflowCard({
     });
   }
 
-  const triggerFormTitles = workflow.triggerFormIds.map((id) => formTitleById[id] ?? "Unbekanntes Formular");
+  const triggerFormTitles = workflow.triggerFormIds.map(
+    (id) => formTitleById[id] ?? "Unbekanntes Formular",
+  );
 
   return (
     <Card className="flex flex-col gap-3" data-testid="workflow-card">
@@ -139,7 +141,12 @@ export function WorkflowCard({
             <input type="hidden" name="workflowId" value={workflow.id} />
             <div className="space-y-1.5">
               <Label htmlFor={`rename-${workflow.id}`}>Name</Label>
-              <Input id={`rename-${workflow.id}`} name="name" defaultValue={workflow.name} required />
+              <Input
+                id={`rename-${workflow.id}`}
+                name="name"
+                defaultValue={workflow.name}
+                required
+              />
             </div>
             <DialogFooter>
               <Button type="submit" variant="primary">

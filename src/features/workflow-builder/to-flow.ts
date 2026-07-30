@@ -12,7 +12,10 @@ import type { WorkflowDefinition, WorkflowNode } from "@/lib/workflow-schema/sch
 export type FlowNode = Node<WorkflowNode>;
 export type FlowEdge = Edge;
 
-export function definitionToFlow(definition: WorkflowDefinition): { nodes: FlowNode[]; edges: FlowEdge[] } {
+export function definitionToFlow(definition: WorkflowDefinition): {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+} {
   const nodes: FlowNode[] = definition.nodes.map((node) => ({
     id: node.id,
     type: node.type,

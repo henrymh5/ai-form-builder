@@ -1,7 +1,13 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { WorkflowNode } from "@/lib/workflow-schema/schema";
 import type { WorkflowFormRef } from "@/lib/workflow-schema/validate";
@@ -69,7 +75,10 @@ export function ResponseActionConfigForm({
               value={undefined}
               placeholder="Platzhalter einfügen"
               onChange={(fieldId) =>
-                onChange({ ...config, noteText: insertFieldPlaceholder(config.noteText ?? "", fieldId) })
+                onChange({
+                  ...config,
+                  noteText: insertFieldPlaceholder(config.noteText ?? "", fieldId),
+                })
               }
             />
           </div>

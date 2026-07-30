@@ -46,9 +46,7 @@ export function NodeShell({
         </span>
         <span className="text-text-primary truncate text-sm font-medium">{label}</span>
       </div>
-      {summary ? (
-        <p className="text-text-secondary mt-1 line-clamp-2 text-xs">{summary}</p>
-      ) : null}
+      {summary ? <p className="text-text-secondary mt-1 line-clamp-2 text-xs">{summary}</p> : null}
       {children}
 
       {outHandles ? (

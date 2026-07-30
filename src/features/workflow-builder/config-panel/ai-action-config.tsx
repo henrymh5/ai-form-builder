@@ -4,7 +4,13 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { WorkflowNode } from "@/lib/workflow-schema/schema";
 
 type AiActionConfig = Extract<WorkflowNode, { type: "aiAction" }>["config"];
@@ -70,9 +76,7 @@ export function AiActionConfigForm({
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() =>
-              onChange({ ...config, categories: [...(config.categories ?? []), ""] })
-            }
+            onClick={() => onChange({ ...config, categories: [...(config.categories ?? []), ""] })}
           >
             <Plus className="size-4" />
             Kategorie hinzufügen

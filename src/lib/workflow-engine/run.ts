@@ -107,7 +107,10 @@ async function assembleContext(runId: string, dryRun: boolean): Promise<RunConte
  * finalizes the run's status. Safe to call multiple times for the same run
  * ID — only the first caller to win the claim actually executes.
  */
-export async function executeWorkflowRun(runId: string, options: { dryRun?: boolean } = {}): Promise<void> {
+export async function executeWorkflowRun(
+  runId: string,
+  options: { dryRun?: boolean } = {},
+): Promise<void> {
   const claimed = await claimWorkflowRun(runId);
   if (!claimed) return;
 

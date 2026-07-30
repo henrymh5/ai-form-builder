@@ -5,7 +5,10 @@ import { ChevronDown, ChevronRight, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { retryRunAction } from "@/features/workflow-builder/actions/run-actions";
 import { RunStatusBadge } from "@/features/workflow-builder/run-status-badge";
-import type { WorkflowRunStepRecord, WorkflowRunSummary } from "@/lib/db/repositories/workflow-runs";
+import type {
+  WorkflowRunStepRecord,
+  WorkflowRunSummary,
+} from "@/lib/db/repositories/workflow-runs";
 
 const NODE_TYPE_LABEL: Record<string, string> = {
   trigger: "Trigger",

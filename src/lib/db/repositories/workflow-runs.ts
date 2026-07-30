@@ -399,7 +399,11 @@ export async function getResponseAnswersForRun(
  */
 export async function getResponseFormId(responseId: string): Promise<string | null> {
   const supabase = createServiceClient();
-  const { data } = await supabase.from("responses").select("form_id").eq("id", responseId).maybeSingle();
+  const { data } = await supabase
+    .from("responses")
+    .select("form_id")
+    .eq("id", responseId)
+    .maybeSingle();
   return data?.form_id ?? null;
 }
 

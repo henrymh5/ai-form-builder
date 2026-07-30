@@ -34,7 +34,10 @@ function makeContext(overrides: Partial<RunContext> = {}): RunContext {
   };
 }
 
-function node(action: "set_status" | "mark_read" | "append_note", extra: Record<string, unknown> = {}) {
+function node(
+  action: "set_status" | "mark_read" | "append_note",
+  extra: Record<string, unknown> = {},
+) {
   return {
     id: "wfn_action",
     type: "responseAction" as const,
