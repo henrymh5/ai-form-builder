@@ -26,7 +26,7 @@ export function AppTopbar({ user, workspaces }: AppTopbarProps) {
     <header className="border-border bg-surface flex h-(--layout-header-height) shrink-0 items-center gap-4 border-b px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-2.5">
         <Link href="/dashboard" aria-label="Flowdesk — zum Dashboard" className="flex items-center">
-          <Logo className="h-9" priority />
+          <Logo className="h-6" priority />
         </Link>
 
         {currentWorkspace ? (
