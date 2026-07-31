@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Logo } from "@/components/shared/logo";
 import { HeaderSearch } from "@/components/shared/header-search";
+import { SupportPill } from "@/components/shared/support-pill";
 import { UserMenu } from "@/features/workspaces/user-menu";
 import type { CurrentUser } from "@/lib/db/repositories/profile";
 import type { WorkspaceSummary } from "@/lib/db/repositories/workspaces";
@@ -55,6 +56,7 @@ export function AppTopbar({ user, workspaces }: AppTopbarProps) {
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
         <HeaderSearch />
+        <SupportPill />
         <UserMenu user={user} />
       </div>
     </header>
