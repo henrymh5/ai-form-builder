@@ -31,7 +31,9 @@ export default async function EmbedFormPage({ params, searchParams }: EmbedFormP
       className="mx-auto min-h-screen px-4"
       style={{
         maxWidth: form.definition.theme.containerWidth,
-        background: transparent === "1" ? "transparent" : undefined,
+        // `transparent` lets the host page's own background show through the iframe;
+        // otherwise the theme's background colour is painted by the renderer itself.
+        background: transparent === "1" ? "transparent" : form.definition.theme.colorBackground,
       }}
     >
       <EmbedFormClient slug={slug} definition={form.definition} />

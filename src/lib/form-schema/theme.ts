@@ -13,11 +13,30 @@ const hexColorSchema = z
     "Muss ein gültiger Hex-Farbwert sein (z.B. #0D9488).",
   );
 
+/**
+ * Selectable fonts. An enum rather than a free-form family string — a public form must
+ * never be able to inject arbitrary CSS (plan §14 "Theme-Werte als validierte Tokens").
+ * All are websafe/system stacks, so a themed form needs no webfont request.
+ */
+export const FONT_OPTIONS = [
+  "inter",
+  "system",
+  "georgia",
+  "times",
+  "garamond",
+  "helvetica",
+  "verdana",
+  "trebuchet",
+  "tahoma",
+  "courier",
+  "mono",
+] as const;
+
 export const themeSchema = z.object({
   colorPrimary: hexColorSchema.default("#0D9488"),
   colorBackground: hexColorSchema.default("#F8FAFC"),
   colorText: hexColorSchema.default("#0F172A"),
-  fontFamily: z.enum(["inter", "system"]).default("inter"),
+  fontFamily: z.enum(FONT_OPTIONS).default("inter"),
   fontSizeBase: z.number().int().min(14).max(20).default(16),
   containerWidth: z.number().int().min(480).max(960).default(680),
   spacing: z.enum(["compact", "comfortable", "spacious"]).default("comfortable"),

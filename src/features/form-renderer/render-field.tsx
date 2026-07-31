@@ -270,11 +270,17 @@ function FieldControl({ field, control }: { field: AnswerableField; control: Con
         <Controller
           name={field.key}
           control={control}
+          defaultValue={[]}
           render={({ field: rhf }) => (
             <input
               id={field.key}
               type="file"
-              onChange={(e) => rhf.onChange(e.target.files?.[0] ?? null)}
+              multiple={(field.validation?.maxFiles ?? 1) > 1}
+              accept={field.validation?.allowedFileTypes?.join(",")}
+              // The answer value is a list of file references, not the File objects
+              // themselves (plan §11.2). Until the signed-upload endpoint exists, store
+              // the file names so the schema shape stays correct and submitting works.
+              onChange={(e) => rhf.onChange(Array.from(e.target.files ?? []).map((f) => f.name))}
               className="text-text-secondary text-sm"
             />
           )}

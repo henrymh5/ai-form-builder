@@ -215,6 +215,109 @@ body {
   }
 }
 
+/*
+ * Public form theming (plan §10 / Style-Guide §23.15).
+ *
+ * Scoped to `[data-form-theme]` so a themed form only restyles itself — the product UI's
+ * own tokens are never touched. The variables come from `themeToStyle()` as inline custom
+ * properties on this element; the rules below are what actually consume them, so a theme
+ * change is visible in the builder preview, on /f/[slug] and inside an embed alike.
+ */
+[data-form-theme] {
+  color: var(--form-color-text);
+  font-family: var(--form-font-family);
+  font-size: var(--form-font-size);
+}
+
+[data-form-theme] h1,
+[data-form-theme] h2,
+[data-form-theme] h3,
+[data-form-theme] label,
+[data-form-theme] legend {
+  color: var(--form-color-text);
+}
+
+/* Secondary copy: descriptions, helper text, progress labels. */
+[data-form-theme] .text-text-secondary,
+[data-form-theme] .text-text-muted {
+  color: var(--form-color-muted);
+}
+
+[data-form-theme] input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+[data-form-theme] textarea,
+[data-form-theme] select {
+  border-radius: var(--form-radius);
+  border-color: var(--form-color-border);
+  background: var(--form-input-background, var(--form-color-surface));
+  color: var(--form-color-text);
+  font-family: inherit;
+}
+
+[data-form-theme] input:focus-visible,
+[data-form-theme] textarea:focus-visible,
+[data-form-theme] select:focus-visible {
+  outline-color: var(--form-color-primary);
+  border-color: var(--form-color-primary);
+}
+
+/* Primary action: the submit/next button carries the theme's accent colour. */
+[data-form-theme] button[type="submit"],
+[data-form-theme] [data-form-primary-action] {
+  border-radius: var(--form-radius);
+  background: var(--form-color-primary);
+  color: var(--form-color-on-primary);
+  border-color: var(--form-color-primary);
+  font-family: inherit;
+}
+
+[data-form-theme] button[type="submit"]:hover:not(:disabled),
+[data-form-theme] [data-form-primary-action]:hover:not(:disabled) {
+  background: var(--form-color-primary-hover);
+  border-color: var(--form-color-primary-hover);
+}
+
+/* Outline button style keeps the accent as border + text instead of a filled surface. */
+[data-form-theme][data-button-style="outline"] button[type="submit"],
+[data-form-theme][data-button-style="outline"] [data-form-primary-action] {
+  background: transparent;
+  color: var(--form-color-primary);
+}
+
+[data-form-theme][data-button-style="outline"] button[type="submit"]:hover:not(:disabled),
+[data-form-theme][data-button-style="outline"] [data-form-primary-action]:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--form-color-primary) 12%, transparent);
+  color: var(--form-color-primary-hover);
+}
+
+/* Filled inputs sit on a tinted surface with no visible border. */
+[data-form-theme][data-input-style="filled"] {
+  --form-input-background: color-mix(
+    in srgb,
+    var(--form-color-text) 6%,
+    var(--form-color-background)
+  );
+}
+
+[data-form-theme][data-input-style="filled"]
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+[data-form-theme][data-input-style="filled"] textarea,
+[data-form-theme][data-input-style="filled"] select {
+  border-color: transparent;
+}
+
+/* Secondary/back buttons stay neutral but follow the theme's radius and text colour. */
+[data-form-theme] button[type="button"]:not([data-form-primary-action]) {
+  border-radius: var(--form-radius);
+  font-family: inherit;
+}
+
+/* Vertical rhythm between fields, driven by the theme's spacing setting. */
+[data-form-theme] [data-form-fields] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--form-gap);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

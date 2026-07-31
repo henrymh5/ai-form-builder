@@ -30,7 +30,12 @@ export default async function PublicFormPage({ params }: PublicFormPageProps) {
   return (
     <main
       className="mx-auto min-h-screen px-4"
-      style={{ maxWidth: form.definition.theme.containerWidth }}
+      style={{
+        maxWidth: form.definition.theme.containerWidth,
+        // Paints the themed background beyond the form's own box, so a dark theme doesn't
+        // leave the rest of the viewport white.
+        background: form.definition.theme.colorBackground,
+      }}
     >
       <PublicFormClient slug={slug} definition={form.definition} />
     </main>

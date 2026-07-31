@@ -137,7 +137,11 @@ function applyRequired<T extends z.ZodTypeAny>(
   nonStringRequired = false,
 ): z.ZodTypeAny {
   if (!required) {
-    return schema.optional();
+    // An untouched text-like input submits "" rather than undefined, so `.optional()`
+    // alone would still run the inner checks (e.g. `min(1)`) against the empty string
+    // and reject a field the user was never required to fill.
+    if (nonStringRequired) return schema.optional();
+    return z.preprocess((value) => (value === "" ? undefined : value), schema.optional());
   }
   if (nonStringRequired) {
     return schema;

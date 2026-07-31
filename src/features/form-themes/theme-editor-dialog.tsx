@@ -16,6 +16,8 @@ import {
 import { useBuilderStore } from "@/features/form-builder/builder-store";
 import { checkThemeAccessibility } from "@/features/form-themes/contrast";
 import { ThemePreview } from "@/features/form-themes/theme-preview";
+import { FONT_LABEL } from "@/features/form-themes/theme-style";
+import { FONT_OPTIONS, type Theme } from "@/lib/form-schema/theme";
 
 /**
  * Theme Editor (plan §10): a small, tokenized set of controls — no free-form
@@ -83,14 +85,18 @@ export function ThemeEditorDialog() {
               <Label htmlFor="font-family">Schriftart</Label>
               <Select
                 value={theme.fontFamily}
-                onValueChange={(v) => updateTheme({ fontFamily: v as "inter" | "system" })}
+                onValueChange={(v) => updateTheme({ fontFamily: v as Theme["fontFamily"] })}
               >
                 <SelectTrigger id="font-family">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="inter">Inter</SelectItem>
-                  <SelectItem value="system">Systemschrift</SelectItem>
+                  {/* Driven by the schema enum so picker and renderer can't drift apart. */}
+                  {FONT_OPTIONS.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {FONT_LABEL[value]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -12,6 +12,7 @@ import { computeProgress } from "@/lib/logic-engine/navigation";
 import { compilePageSchema } from "@/lib/validation/compile-page";
 import { RenderField } from "@/features/form-renderer/render-field";
 import { ProgressIndicator } from "@/features/form-renderer/progress-indicator";
+import { themeToStyle } from "@/features/form-themes/theme-style";
 
 export type RendererMode = "preview" | "test" | "public";
 
@@ -78,7 +79,15 @@ export function FormRenderer({ definition, mode, onComplete, onPageView }: FormR
   if (endingId) {
     const ending = definition.endings.find((e) => e.id === endingId) ?? definition.endings[0]!;
     return (
-      <div className="mx-auto max-w-lg space-y-3 py-16 text-center">
+      // Themed like the form itself — the ending is the last thing a respondent sees, so
+      // dropping back to the product's default colours here would look like a broken page.
+      <div
+        data-form-theme
+        data-button-style={definition.theme.buttonStyle}
+        data-input-style={definition.theme.inputStyle}
+        style={themeToStyle(definition.theme)}
+        className="mx-auto w-full space-y-3 py-16 text-center"
+      >
         <h1 className="text-text-primary text-2xl font-semibold">{ending.title}</h1>
         {ending.description ? (
           <p className="text-text-secondary text-sm">{ending.description}</p>
@@ -122,7 +131,15 @@ export function FormRenderer({ definition, mode, onComplete, onPageView }: FormR
   const canGoBack = definition.settings.allowBack && currentIndex > 0;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 py-8">
+    <div
+      // Applying the theme here (rather than per route) means the builder preview, the
+      // public page and the embed all render identically — one implementation, per plan §13.
+      data-form-theme
+      data-button-style={definition.theme.buttonStyle}
+      data-input-style={definition.theme.inputStyle}
+      style={themeToStyle(definition.theme)}
+      className="mx-auto w-full space-y-6 py-8"
+    >
       {definition.settings.progressDisplay !== "none" ? (
         <ProgressIndicator mode={definition.settings.progressDisplay} progress={progress} />
       ) : null}
@@ -141,9 +158,11 @@ export function FormRenderer({ definition, mode, onComplete, onPageView }: FormR
       ) : null}
 
       <form onSubmit={handleSubmit(onSubmitPage)} className="space-y-5">
-        {visibleFields.map((field) => (
-          <RenderField key={field.id} field={field} control={control} errors={errors} />
-        ))}
+        <div data-form-fields>
+          {visibleFields.map((field) => (
+            <RenderField key={field.id} field={field} control={control} errors={errors} />
+          ))}
+        </div>
 
         <div className="flex justify-between pt-2">
           {canGoBack ? (
