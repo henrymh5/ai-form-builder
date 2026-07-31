@@ -725,7 +725,9 @@ export interface WorkflowScheduleMeta {
 }
 
 /** Workflow metadata for the manual-trigger server action (status/definition/digest window). */
-export async function getWorkflowScheduleMeta(workflowId: string): Promise<WorkflowScheduleMeta | null> {
+export async function getWorkflowScheduleMeta(
+  workflowId: string,
+): Promise<WorkflowScheduleMeta | null> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("workflows")

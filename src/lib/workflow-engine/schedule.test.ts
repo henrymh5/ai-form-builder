@@ -4,7 +4,9 @@ import { computeNextRunAt } from "./schedule";
 
 const FORM_IDS: string[] = [];
 
-function schedule(partial: Omit<Extract<TriggerConfig, { event: "schedule" }>, "event" | "formIds">): TriggerConfig {
+function schedule(
+  partial: Omit<Extract<TriggerConfig, { event: "schedule" }>, "event" | "formIds">,
+): TriggerConfig {
   return { event: "schedule", formIds: FORM_IDS, ...partial };
 }
 

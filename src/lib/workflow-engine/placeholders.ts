@@ -41,9 +41,7 @@ function formatAllAnswers(ctx: RunContext): string {
 }
 
 function formatDigestResponse(response: DigestResponse): string {
-  const lines = response.answers.map(
-    (a) => `  ${a.fieldId}: ${formatAnswerValue(a.value)}`,
-  );
+  const lines = response.answers.map((a) => `  ${a.fieldId}: ${formatAnswerValue(a.value)}`);
   return `**${response.formTitle}** – ${response.submittedAt}\n${lines.join("\n")}`;
 }
 
@@ -70,9 +68,7 @@ function formatPayloadJson(ctx: RunContext): string {
   } catch {
     return "";
   }
-  return text.length > PAYLOAD_JSON_MAX_CHARS
-    ? text.slice(0, PAYLOAD_JSON_MAX_CHARS) + "…"
-    : text;
+  return text.length > PAYLOAD_JSON_MAX_CHARS ? text.slice(0, PAYLOAD_JSON_MAX_CHARS) + "…" : text;
 }
 
 /** Resolves all placeholders in `template` against the run context. Unresolvable tokens (wrong trigger type, unknown field) resolve to "". */

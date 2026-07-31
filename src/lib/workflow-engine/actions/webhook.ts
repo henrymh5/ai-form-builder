@@ -44,7 +44,12 @@ function buildPayload(ctx: RunContext, includeAnswers: boolean): WebhookPayload 
     };
   }
 
-  const digest = ctx.digest ?? { responses: [], windowStart: null, windowEnd: new Date().toISOString(), truncated: false };
+  const digest = ctx.digest ?? {
+    responses: [],
+    windowStart: null,
+    windowEnd: new Date().toISOString(),
+    truncated: false,
+  };
   const base = {
     workflowId: ctx.workflowId,
     windowStart: digest.windowStart,

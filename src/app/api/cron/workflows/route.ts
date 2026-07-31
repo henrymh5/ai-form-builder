@@ -31,7 +31,10 @@ function isAuthorized(request: Request): boolean {
 
 export async function POST(request: Request) {
   if (!isAuthorized(request)) {
-    return NextResponse.json({ error: { code: "UNAUTHENTICATED", message: "Unauthorized." } }, { status: 401 });
+    return NextResponse.json(
+      { error: { code: "UNAUTHENTICATED", message: "Unauthorized." } },
+      { status: 401 },
+    );
   }
 
   const now = new Date();
@@ -40,7 +43,10 @@ export async function POST(request: Request) {
   const runIds: string[] = [];
   for (const workflow of due) {
     const triggerConfig = getTriggerConfig(workflow.definition.nodes);
-    if (!triggerConfig || (triggerConfig.event !== "schedule" && triggerConfig.event !== "scheduled_once")) {
+    if (
+      !triggerConfig ||
+      (triggerConfig.event !== "schedule" && triggerConfig.event !== "scheduled_once")
+    ) {
       continue; // stale next_run_at from a since-edited trigger — skip, don't fire
     }
 

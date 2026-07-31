@@ -135,8 +135,7 @@ async function assembleContext(runId: string, dryRun: boolean): Promise<RunConte
   const windowStart = run.triggerContext?.windowStart ?? null;
   const windowEnd = run.triggerContext?.windowEnd ?? new Date().toISOString();
   const definitionTrigger = run.definitionSnapshot.nodes.find((n) => n.type === "trigger");
-  const formIds =
-    definitionTrigger?.type === "trigger" ? definitionTrigger.config.formIds : [];
+  const formIds = definitionTrigger?.type === "trigger" ? definitionTrigger.config.formIds : [];
 
   const digestResult = await getDigestResponses(formIds, windowStart, windowEnd);
 

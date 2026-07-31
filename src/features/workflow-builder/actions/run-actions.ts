@@ -160,7 +160,11 @@ export async function startTestRunAction(params: {
     definition: parsed.data.definition,
     triggerType: triggerConfig.event,
     dedupeKey,
-    triggerContext: { windowStart: windowStart.toISOString(), windowEnd: now.toISOString(), payload },
+    triggerContext: {
+      windowStart: windowStart.toISOString(),
+      windowEnd: now.toISOString(),
+      payload,
+    },
     isTest: true,
   });
   if (!runId) return { ok: false, error: "Testlauf konnte nicht gestartet werden." };

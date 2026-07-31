@@ -26,7 +26,9 @@ function makeContext(overrides: Partial<RunContext> = {}): RunContext {
   };
 }
 
-function digestOf(overrides: Partial<RunContext["digest"]> = {}): NonNullable<RunContext["digest"]> {
+function digestOf(
+  overrides: Partial<RunContext["digest"]> = {},
+): NonNullable<RunContext["digest"]> {
   return {
     responses: [
       {

@@ -9,7 +9,8 @@ const appendResponseNoteForWorkflowBatch = vi.fn();
 vi.mock("@/lib/db/repositories/workflow-runs", () => ({
   setResponseStatusForWorkflowBatch: (...args: unknown[]) =>
     setResponseStatusForWorkflowBatch(...args),
-  markResponseReadForWorkflowBatch: (...args: unknown[]) => markResponseReadForWorkflowBatch(...args),
+  markResponseReadForWorkflowBatch: (...args: unknown[]) =>
+    markResponseReadForWorkflowBatch(...args),
   appendResponseNoteForWorkflowBatch: (...args: unknown[]) =>
     appendResponseNoteForWorkflowBatch(...args),
 }));
@@ -137,7 +138,10 @@ describe("runResponseAction — digest mode (multiple responses)", () => {
   });
 
   it("appends the same resolved note text to every digest response", async () => {
-    await runResponseAction(node("append_note", { noteText: "Automatisch verarbeitet" }), digestContext());
+    await runResponseAction(
+      node("append_note", { noteText: "Automatisch verarbeitet" }),
+      digestContext(),
+    );
     expect(appendResponseNoteForWorkflowBatch).toHaveBeenCalledWith(
       ["resp_a", "resp_b"],
       "Automatisch verarbeitet",
@@ -146,7 +150,12 @@ describe("runResponseAction — digest mode (multiple responses)", () => {
 
   it("does nothing (appliedTo: 0) when the digest is empty", async () => {
     const ctx = digestContext();
-    ctx.digest = { responses: [], windowStart: null, windowEnd: "2026-01-01T10:00:00.000Z", truncated: false };
+    ctx.digest = {
+      responses: [],
+      windowStart: null,
+      windowEnd: "2026-01-01T10:00:00.000Z",
+      truncated: false,
+    };
     const result = await runResponseAction(node("mark_read"), ctx);
     expect(markResponseReadForWorkflowBatch).not.toHaveBeenCalled();
     expect(result.output).toMatchObject({ appliedTo: 0 });

@@ -129,9 +129,9 @@ export function TestRunDialog({
           <div className="space-y-4">
             <p className="text-text-secondary text-sm">
               Simuliert einen Digest-Lauf mit den seit dem letzten echten Lauf eingegangenen
-              Antworten der ausgewählten Formulare (max. 7 Tage zurück). Aktionen werden
-              simuliert — es werden keine echten E-Mails oder Webhooks ausgelöst, und der
-              Digest-Zeitraum wird durch den Testlauf nicht fortgeschrieben.
+              Antworten der ausgewählten Formulare (max. 7 Tage zurück). Aktionen werden simuliert —
+              es werden keine echten E-Mails oder Webhooks ausgelöst, und der Digest-Zeitraum wird
+              durch den Testlauf nicht fortgeschrieben.
             </p>
             {isWebhookTrigger ? (
               <div className="space-y-1.5">

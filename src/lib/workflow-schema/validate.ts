@@ -83,14 +83,21 @@ function checkSingleTrigger(
   const knownFormIds = forms ? new Set(forms.map((f) => f.id)) : undefined;
   const requiresDigestConsumers = new Set(["responseAction", "aiAction"]);
   const usesDigestPlaceholder = definition.nodes.some(
-    (n) => n.type === "email" && extractPlaceholderTokens(n.config.subject + n.config.body).some((t) => t.startsWith("digest:")),
+    (n) =>
+      n.type === "email" &&
+      extractPlaceholderTokens(n.config.subject + n.config.body).some((t) =>
+        t.startsWith("digest:"),
+      ),
   );
 
   for (const trigger of triggers) {
     if (trigger.type !== "trigger") continue;
     const { config } = trigger;
 
-    const formIdsRequired = config.event === "response_submitted" || config.event === "schedule" || config.event === "scheduled_once";
+    const formIdsRequired =
+      config.event === "response_submitted" ||
+      config.event === "schedule" ||
+      config.event === "scheduled_once";
     if (formIdsRequired && config.formIds.length === 0) {
       errors.push({
         code: "TRIGGER_NO_FORMS",
@@ -407,7 +414,8 @@ function checkTriggerActionCompatibility(
     if (node.type === "condition") {
       issues.push({
         code: "CONDITION_UNSUPPORTED_FOR_TRIGGER",
-        message: "Bedingungen benötigen eine einzelne Antwort und funktionieren nur beim Trigger „Neue Formularantwort“.",
+        message:
+          "Bedingungen benötigen eine einzelne Antwort und funktionieren nur beim Trigger „Neue Formularantwort“.",
         nodeId: node.id,
       });
     }
@@ -415,7 +423,8 @@ function checkTriggerActionCompatibility(
     if (node.type === "email" && node.config.to === "submitter_field") {
       issues.push({
         code: "EMAIL_RECIPIENT_UNSUPPORTED_FOR_TRIGGER",
-        message: "Empfängerfeld benötigt eine einzelne Antwort und funktioniert nur beim Trigger „Neue Formularantwort“.",
+        message:
+          "Empfängerfeld benötigt eine einzelne Antwort und funktioniert nur beim Trigger „Neue Formularantwort“.",
         nodeId: node.id,
       });
     }
@@ -423,7 +432,8 @@ function checkTriggerActionCompatibility(
     if (node.type === "aiAction" && node.config.task !== "summarize") {
       issues.push({
         code: "AI_TASK_UNSUPPORTED_FOR_TRIGGER",
-        message: "Einordnen und Übersetzen benötigen eine einzelne Antwort und funktionieren nur beim Trigger „Neue Formularantwort“.",
+        message:
+          "Einordnen und Übersetzen benötigen eine einzelne Antwort und funktionieren nur beim Trigger „Neue Formularantwort“.",
         nodeId: node.id,
       });
     }
@@ -478,7 +488,8 @@ function checkPlaceholderCompatibility(
 
   for (const node of definition.nodes) {
     if (node.type === "email") checkText(node.config.subject + node.config.body, node.id);
-    if (node.type === "responseAction" && node.config.noteText) checkText(node.config.noteText, node.id);
+    if (node.type === "responseAction" && node.config.noteText)
+      checkText(node.config.noteText, node.id);
   }
 }
 

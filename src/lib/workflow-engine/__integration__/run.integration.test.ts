@@ -219,7 +219,12 @@ describe("workflow enqueue + execute (integration)", () => {
         },
       ],
       edges: [
-        { id: generateWorkflowId("edge"), source: triggerId, target: actionId, sourceHandle: "out" },
+        {
+          id: generateWorkflowId("edge"),
+          source: triggerId,
+          target: actionId,
+          sourceHandle: "out",
+        },
       ],
     };
   }

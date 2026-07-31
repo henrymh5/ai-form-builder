@@ -26,7 +26,10 @@ vi.mock("next/server", async (importOriginal) => {
 
 const { POST } = await import("./route");
 
-const tokenAlphabet = customAlphabet("23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ", 32);
+const tokenAlphabet = customAlphabet(
+  "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",
+  32,
+);
 
 function makeRequest(body: string | undefined, extraHeaders: Record<string, string> = {}): Request {
   return new Request("http://localhost/api/public/workflows/x/trigger", {
@@ -132,7 +135,10 @@ describe("POST /api/public/workflows/:token/trigger (integration)", () => {
   });
 
   it("returns the same 404 for a paused workflow", async () => {
-    const { token } = await insertWorkflow({ status: "paused", definition: webhookInboundDefinition() });
+    const { token } = await insertWorkflow({
+      status: "paused",
+      definition: webhookInboundDefinition(),
+    });
     const response = await callRoute(token, "{}");
     expect(response.status).toBe(404);
   });
@@ -144,13 +150,19 @@ describe("POST /api/public/workflows/:token/trigger (integration)", () => {
   });
 
   it("returns 400 for a body that isn't valid JSON", async () => {
-    const { token } = await insertWorkflow({ status: "enabled", definition: webhookInboundDefinition() });
+    const { token } = await insertWorkflow({
+      status: "enabled",
+      definition: webhookInboundDefinition(),
+    });
     const response = await callRoute(token, "not json");
     expect(response.status).toBe(400);
   });
 
   it("returns 413 when the body exceeds the size cap", async () => {
-    const { token } = await insertWorkflow({ status: "enabled", definition: webhookInboundDefinition() });
+    const { token } = await insertWorkflow({
+      status: "enabled",
+      definition: webhookInboundDefinition(),
+    });
     const hugeBody = JSON.stringify({ data: "x".repeat(70_000) });
     const response = await callRoute(token, hugeBody);
     expect(response.status).toBe(413);

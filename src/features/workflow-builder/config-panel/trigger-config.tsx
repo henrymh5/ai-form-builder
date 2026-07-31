@@ -104,7 +104,10 @@ export function TriggerConfigForm({
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label>Trigger-Typ</Label>
-        <Select value={config.event} onValueChange={(value) => handleTypeChange(value as TriggerEvent)}>
+        <Select
+          value={config.event}
+          onValueChange={(value) => handleTypeChange(value as TriggerEvent)}
+        >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -228,8 +231,8 @@ export function TriggerConfigForm({
             }}
           />
           <p className="text-text-muted text-xs">
-            Deutsche Zeit: UTC+1 (Winter) / UTC+2 (Sommer). Der Workflow pausiert sich nach dem
-            Lauf automatisch.
+            Deutsche Zeit: UTC+1 (Winter) / UTC+2 (Sommer). Der Workflow pausiert sich nach dem Lauf
+            automatisch.
           </p>
         </div>
       ) : null}
@@ -270,7 +273,9 @@ export function TriggerConfigForm({
       ) : null}
 
       <div className="space-y-1.5">
-        <Label>{config.event === "response_submitted" ? "Trigger-Formulare" : "Formulare für den Digest"}</Label>
+        <Label>
+          {config.event === "response_submitted" ? "Trigger-Formulare" : "Formulare für den Digest"}
+        </Label>
         <MultiSelect
           options={formOptions}
           selected={config.formIds}
