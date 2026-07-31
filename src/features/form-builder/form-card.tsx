@@ -85,6 +85,13 @@ export function FormCard({ form }: { form: FormSummary }) {
             <DropdownMenuItem asChild>
               <Link href={`/forms/${form.id}`}>Öffnen</Link>
             </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/forms/${form.id}/responses`}>Antworten</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href={`/forms/${form.id}/analytics`}>Analytics</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setRenameOpen(true)}>Umbenennen</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => runFormIdAction(duplicateFormAction, form.id)}>
               Duplizieren
@@ -131,7 +138,13 @@ export function FormCard({ form }: { form: FormSummary }) {
 
       <div className="text-text-muted flex justify-between text-xs">
         <span>Bearbeitet: {formatDate(form.updatedAt)}</span>
-        <span>{form.responseCount} Antworten</span>
+        {/* The count is the obvious thing to click when you want to read the answers. */}
+        <Link
+          href={`/forms/${form.id}/responses`}
+          className="hover:text-primary-text hover:underline"
+        >
+          {form.responseCount} Antworten
+        </Link>
       </div>
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
