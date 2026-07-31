@@ -46,7 +46,7 @@ export default async function Home() {
     <div className="bg-background flex flex-1 flex-col items-center px-6 py-16">
       <div className="w-full max-w-3xl space-y-12 text-center">
         <div className="space-y-4">
-          <h1 className="sr-only">FormCraft</h1>
+          <h1 className="sr-only">Flowdesk</h1>
           <Logo className="mx-auto h-20 sm:h-24" priority />
           <p className="text-text-secondary mx-auto max-w-xl text-base">
             Formulare per KI-Beschreibung, Vorlage oder manuell erstellen — im visuellen Builder
@@ -107,7 +107,7 @@ export default async function Home() {
             Testen, ob das eingebettete Ausfüllen fehlerfrei funktioniert.
           </p>
           <iframe
-            src="/embed/anfrage-f-r-werbeagentur-ms4qbfmm"
+            src="/embed/anfrage-f-r-kampfsportschule-ms63h5oe"
             title="Embed-Test: Anfrage für Werbeagentur"
             className="border-border w-full rounded-lg border"
             style={{ height: 600 }}

@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 // starting Phase 3.
 test("homepage renders and links to the token demo", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "FormCraft" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Flowdesk" })).toBeVisible();
 
   await page.getByRole("link", { name: "Design-Token-Übersicht ansehen" }).click();
   await expect(page).toHaveURL(/\/dev\/tokens/);

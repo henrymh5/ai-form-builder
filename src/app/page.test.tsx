@@ -20,7 +20,7 @@ describe("Home page", () => {
   it("renders the product title and a link to the token demo", async () => {
     await renderHome();
 
-    expect(screen.getByRole("heading", { name: "FormCraft" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Flowdesk" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Design-Token-Übersicht ansehen" })).toHaveAttribute(
       "href",
       "/dev/tokens",

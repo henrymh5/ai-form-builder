@@ -41,7 +41,7 @@ export function SupportPill() {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem asChild>
-          <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("FormCraft — Frage")}`}>
+          <a href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Flowdesk — Frage")}`}>
             <Mail className="size-4" />
             E-Mail schreiben
           </a>

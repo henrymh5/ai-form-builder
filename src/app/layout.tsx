@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FormCraft",
+  title: "Flowdesk",
   description: "KI-gestützter Form Builder",
   icons: { icon: "/logo.png" },
 };

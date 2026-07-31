@@ -8,7 +8,7 @@ import { getCurrentUser } from "@/lib/db/repositories/profile";
  * session. Deliberately not applied to the whole `(auth)` group: a signed-in user may still
  * want `/reset-password` to change their password.
  */
-export default async function LoginLayout({ children }: LayoutProps<"/login">) {
+export default async function LoginLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (user) redirect("/dashboard");
 
