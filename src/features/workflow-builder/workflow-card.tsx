@@ -28,6 +28,8 @@ import {
   renameWorkflowAction,
   toggleWorkflowStatusAction,
 } from "@/features/workflow-builder/actions/workflow-actions";
+import { runManualWorkflowAction } from "@/features/workflow-builder/actions/run-actions";
+import { describeTrigger, getTriggerConfig } from "@/lib/workflow-schema/nodes";
 import type { WorkflowRecord } from "@/lib/db/repositories/workflows";
 
 function formatDate(iso: string): string {
@@ -50,7 +52,19 @@ export function WorkflowCard({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [status, setStatus] = useState(workflow.status);
   const [toggleError, setToggleError] = useState<string | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const triggerConfig = getTriggerConfig(workflow.definition.nodes);
+  const isManualTrigger = triggerConfig?.event === "manual";
+
+  function handleRunManual() {
+    setRunError(null);
+    startTransition(async () => {
+      const result = await runManualWorkflowAction({ workflowId: workflow.id });
+      if (!result.ok) setRunError(result.error ?? "Ausführung fehlgeschlagen.");
+    });
+  }
 
   function handleToggle(checked: boolean) {
     const nextStatus = checked ? "enabled" : "paused";
@@ -95,6 +109,14 @@ export function WorkflowCard({
               <Link href={`/workflows/${workflow.id}/runs`}>Läufe ansehen</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setRenameOpen(true)}>Umbenennen</DropdownMenuItem>
+            {isManualTrigger ? (
+              <DropdownMenuItem
+                disabled={status !== "enabled" || isPending}
+                onSelect={handleRunManual}
+              >
+                Jetzt ausführen
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem destructive onSelect={() => setDeleteOpen(true)}>
               Löschen
@@ -104,6 +126,7 @@ export function WorkflowCard({
       </div>
 
       <p className="text-text-secondary truncate text-xs">
+        {describeTrigger(triggerConfig)} ·{" "}
         {triggerFormTitles.length === 0
           ? "Kein Formular ausgewählt"
           : triggerFormTitles.length === 1
@@ -123,6 +146,7 @@ export function WorkflowCard({
         />
       </div>
       {toggleError ? <p className="text-error text-xs">{toggleError}</p> : null}
+      {runError ? <p className="text-error text-xs">{runError}</p> : null}
 
       <div className="text-text-muted text-xs">Bearbeitet: {formatDate(workflow.updatedAt)}</div>
 

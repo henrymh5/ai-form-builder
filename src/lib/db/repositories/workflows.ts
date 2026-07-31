@@ -7,6 +7,8 @@ import {
   type WorkflowDefinition,
 } from "@/lib/workflow-schema/schema";
 import { createEmptyWorkflowDefinition } from "@/lib/workflow-schema/factory";
+import { getTriggerConfig } from "@/lib/workflow-schema/nodes";
+import { computeNextRunAt } from "@/lib/workflow-engine/schedule";
 
 /**
  * Authenticated (RLS-enforced) access to workflows — mirrors
@@ -38,6 +40,16 @@ export interface WorkflowRecord extends WorkflowSummary {
 }
 
 const webhookSecretAlphabet = customAlphabet(
+  "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",
+  32,
+);
+/**
+ * Separate credential from webhookSecretAlphabet: the inbound token is
+ * embedded in a public URL (and therefore visible in proxy/access logs),
+ * while webhook_secret is the OUTBOUND HMAC signing key — the two must
+ * never be interchangeable.
+ */
+const inboundTokenAlphabet = customAlphabet(
   "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",
   32,
 );
@@ -186,6 +198,8 @@ export async function createWorkflow(params: {
   const supabase = await createUserClient();
   const definition = params.definition ?? createEmptyWorkflowDefinition();
 
+  const nextRunAt = computeNextRunAt(getTriggerConfig(definition.nodes), new Date());
+
   const { data, error } = await supabase
     .from("workflows")
     .insert({
@@ -195,6 +209,8 @@ export async function createWorkflow(params: {
       definition: definition as never,
       schema_version: CURRENT_WORKFLOW_SCHEMA_VERSION,
       webhook_secret: webhookSecretAlphabet(),
+      inbound_token: inboundTokenAlphabet(),
+      next_run_at: nextRunAt ? nextRunAt.toISOString() : null,
       created_by: params.userId,
     })
     .select("*")
@@ -212,15 +228,26 @@ export async function createWorkflow(params: {
   return mapRow(data, triggerFormIds);
 }
 
-/** Saves the definition and re-syncs workflow_form_triggers from its trigger node's formIds. */
+/**
+ * Saves the definition, re-syncs workflow_form_triggers from its trigger
+ * node's formIds, and recomputes next_run_at from the (possibly changed)
+ * schedule — kept fresh on every save so an already-enabled workflow whose
+ * schedule was just edited doesn't keep firing on the old slot.
+ */
 export async function saveWorkflowDefinition(
   workflowId: string,
   definition: WorkflowDefinition,
 ): Promise<void> {
   const supabase = await createUserClient();
+  const nextRunAt = computeNextRunAt(getTriggerConfig(definition.nodes), new Date());
+
   const { error } = await supabase
     .from("workflows")
-    .update({ definition: definition as never, updated_at: new Date().toISOString() })
+    .update({
+      definition: definition as never,
+      next_run_at: nextRunAt ? nextRunAt.toISOString() : null,
+      updated_at: new Date().toISOString(),
+    })
     .eq("id", workflowId);
 
   if (error) {
@@ -238,9 +265,23 @@ export async function renameWorkflow(workflowId: string, name: string): Promise<
   }
 }
 
-export async function setWorkflowStatus(workflowId: string, status: WorkflowStatus): Promise<void> {
+/**
+ * `definition` should be passed when `status === "enabled"` so next_run_at
+ * is recomputed from "now" — the value persisted at the last save may
+ * already be in the past if the workflow was paused for a while.
+ */
+export async function setWorkflowStatus(
+  workflowId: string,
+  status: WorkflowStatus,
+  definition?: WorkflowDefinition,
+): Promise<void> {
   const supabase = await createUserClient();
-  const { error } = await supabase.from("workflows").update({ status }).eq("id", workflowId);
+  const patch: { status: WorkflowStatus; next_run_at?: string | null } = { status };
+  if (status === "enabled" && definition) {
+    const nextRunAt = computeNextRunAt(getTriggerConfig(definition.nodes), new Date());
+    patch.next_run_at = nextRunAt ? nextRunAt.toISOString() : null;
+  }
+  const { error } = await supabase.from("workflows").update(patch).eq("id", workflowId);
   if (error) {
     throw new AppError("FORBIDDEN", "Workflow-Status konnte nicht geändert werden.", {
       cause: error,
@@ -269,4 +310,20 @@ export async function getWorkflowWebhookSecret(workflowId: string): Promise<stri
     });
   }
   return data?.webhook_secret ?? null;
+}
+
+/** The inbound-webhook token for this workflow's public trigger URL (distinct from webhook_secret — see inboundTokenAlphabet). */
+export async function getWorkflowInboundToken(workflowId: string): Promise<string | null> {
+  const supabase = await createUserClient();
+  const { data, error } = await supabase
+    .from("workflows")
+    .select("inbound_token")
+    .eq("id", workflowId)
+    .maybeSingle();
+  if (error) {
+    throw new AppError("INTERNAL_ERROR", "Webhook-Token konnte nicht geladen werden.", {
+      cause: error,
+    });
+  }
+  return data?.inbound_token ?? null;
 }

@@ -1,6 +1,7 @@
 import "server-only";
 import { createServiceClient } from "@/lib/db/service-client";
 import type { FormDefinition } from "@/lib/form-schema/schema";
+import { getTriggerConfig, type TriggerEvent } from "@/lib/workflow-schema/nodes";
 import type { WorkflowDefinition } from "@/lib/workflow-schema/schema";
 
 /**
@@ -22,9 +23,12 @@ export interface EnabledWorkflow {
 }
 
 /**
- * Fetches enabled workflows whose trigger is attached to this form, for the
- * enqueue step after a submission — joins through workflow_form_triggers
- * (0013) since a workflow can be triggered by multiple forms.
+ * Fetches enabled workflows whose trigger is attached to this form AND
+ * whose trigger event is `response_submitted` — joins through
+ * workflow_form_triggers (0013) since a workflow can be triggered by
+ * multiple forms, then filters out schedule/webhook/manual workflows: their
+ * formIds are a DIGEST SCOPE, not a submission trigger, so they must never
+ * fire from this path (0015).
  */
 export async function listEnabledWorkflowsForForm(formId: string): Promise<EnabledWorkflow[]> {
   const supabase = createServiceClient();
@@ -36,25 +40,38 @@ export async function listEnabledWorkflowsForForm(formId: string): Promise<Enabl
 
   if (error || !data) return [];
 
-  return data.map((w) => ({
-    id: w.id,
-    definition: w.definition as unknown as WorkflowDefinition,
-  }));
+  return data
+    .map((w) => ({ id: w.id, definition: w.definition as unknown as WorkflowDefinition }))
+    .filter((w) => getTriggerConfig(w.definition.nodes)?.event === "response_submitted");
+}
+
+export interface TriggerContextSnapshot {
+  /** Digest window — new responses strictly after `windowStart` (or all, if null) up to and including `windowEnd`. */
+  windowStart?: string | null;
+  windowEnd?: string;
+  /** Inbound webhook POST body (already JSON-parsed), only for webhook_inbound runs. */
+  payload?: unknown;
 }
 
 export interface EnqueueRunParams {
   workflowId: string;
-  formId: string;
-  responseId: string;
+  /** null for runs not scoped to a single form (schedule/webhook/manual digests). */
+  formId?: string | null;
+  /** null for runs not tied to a single response. */
+  responseId?: string | null;
   definition: WorkflowDefinition;
+  triggerType: TriggerEvent;
+  /** Uniform idempotency key — 'response:<id>' / 'schedule:<tickISO>' / 'once:<runAtISO>' / 'webhook:<nanoid>' / 'manual:<nanoid>'. */
+  dedupeKey: string;
+  triggerContext?: TriggerContextSnapshot | null;
   isTest?: boolean;
   attempt?: number;
 }
 
 /**
- * Inserts a queued run. Relies on `workflow_runs_unique_per_response_idx`
- * (0012, partial on `is_test = false`) for idempotency — a duplicate
- * (workflow, response, attempt) insert hits a unique violation, which is
+ * Inserts a queued run. Relies on `workflow_runs_unique_per_dedupe_idx`
+ * (0015, partial on `is_test = false`) for idempotency — a duplicate
+ * (workflow, dedupeKey, attempt) insert hits a unique violation, which is
  * swallowed here rather than surfaced as an error (the run already exists).
  */
 export async function enqueueWorkflowRun(params: EnqueueRunParams): Promise<string | null> {
@@ -63,9 +80,12 @@ export async function enqueueWorkflowRun(params: EnqueueRunParams): Promise<stri
     .from("workflow_runs")
     .insert({
       workflow_id: params.workflowId,
-      form_id: params.formId,
-      response_id: params.responseId,
+      form_id: params.formId ?? null,
+      response_id: params.responseId ?? null,
       definition_snapshot: params.definition as never,
+      trigger_type: params.triggerType,
+      dedupe_key: params.dedupeKey,
+      trigger_context: (params.triggerContext ?? null) as never,
       is_test: params.isTest ?? false,
       attempt: params.attempt ?? 1,
     })
@@ -82,8 +102,11 @@ export async function enqueueWorkflowRun(params: EnqueueRunParams): Promise<stri
 export interface WorkflowRunRecord {
   id: string;
   workflowId: string;
-  formId: string;
-  responseId: string;
+  formId: string | null;
+  responseId: string | null;
+  triggerType: TriggerEvent;
+  dedupeKey: string;
+  triggerContext: TriggerContextSnapshot | null;
   status: WorkflowRunStatus;
   definitionSnapshot: WorkflowDefinition;
   attempt: number;
@@ -107,6 +130,9 @@ export async function getWorkflowRun(runId: string): Promise<WorkflowRunRecord |
     workflowId: data.workflow_id,
     formId: data.form_id,
     responseId: data.response_id,
+    triggerType: data.trigger_type as TriggerEvent,
+    dedupeKey: data.dedupe_key,
+    triggerContext: data.trigger_context as unknown as TriggerContextSnapshot | null,
     status: data.status as WorkflowRunStatus,
     definitionSnapshot: data.definition_snapshot as unknown as WorkflowDefinition,
     attempt: data.attempt,
@@ -120,8 +146,8 @@ export async function getWorkflowRun(runId: string): Promise<WorkflowRunRecord |
  * Atomically claims a queued run for execution — `update ... where status =
  * 'queued'` returns zero rows if another process already claimed it. This is
  * the whole locking strategy for v1 (documented pragmatic tradeoff in the
- * workflow plan): sufficient because runs are created once per (workflow,
- * response, attempt) and `after()` only fires once per enqueue.
+ * workflow plan): sufficient because runs are created once per
+ * (workflow, dedupeKey, attempt) and `after()` only fires once per enqueue.
  */
 export async function claimWorkflowRun(runId: string): Promise<boolean> {
   const supabase = createServiceClient();
@@ -159,7 +185,8 @@ export interface ListRunsFilter {
 
 export interface WorkflowRunSummary {
   id: string;
-  responseId: string;
+  responseId: string | null;
+  triggerType: TriggerEvent;
   status: WorkflowRunStatus;
   attempt: number;
   isTest: boolean;
@@ -184,7 +211,7 @@ export async function listWorkflowRuns(
   const { data, error, count } = await supabase
     .from("workflow_runs")
     .select(
-      "id, response_id, status, attempt, is_test, error_message, started_at, finished_at, created_at",
+      "id, response_id, trigger_type, status, attempt, is_test, error_message, started_at, finished_at, created_at",
       { count: "exact" },
     )
     .eq("workflow_id", workflowId)
@@ -197,6 +224,7 @@ export async function listWorkflowRuns(
     runs: data.map((r) => ({
       id: r.id,
       responseId: r.response_id,
+      triggerType: r.trigger_type as TriggerEvent,
       status: r.status as WorkflowRunStatus,
       attempt: r.attempt,
       isTest: r.is_test,
@@ -292,6 +320,8 @@ export async function finishWorkflowRunStep(
 // Response mutations for the "responseAction" node type. These run inside a
 // workflow run (service-role context, no authenticated user), unlike the
 // authenticated equivalents in repositories/responses.ts used by the UI.
+// Batch variants exist for digest-mode runs, where the action applies to
+// every response in the digest (bounded by DIGEST_RESPONSE_LIMIT below).
 // ---------------------------------------------------------------------------
 
 export async function setResponseStatusForWorkflow(
@@ -302,12 +332,31 @@ export async function setResponseStatusForWorkflow(
   await supabase.from("responses").update({ status }).eq("id", responseId);
 }
 
+export async function setResponseStatusForWorkflowBatch(
+  responseIds: string[],
+  status: "completed" | "spam" | "archived",
+): Promise<void> {
+  if (responseIds.length === 0) return;
+  const supabase = createServiceClient();
+  await supabase.from("responses").update({ status }).in("id", responseIds);
+}
+
 export async function markResponseReadForWorkflow(responseId: string): Promise<void> {
   const supabase = createServiceClient();
   await supabase
     .from("responses")
     .update({ read_at: new Date().toISOString() })
     .eq("id", responseId)
+    .is("read_at", null);
+}
+
+export async function markResponseReadForWorkflowBatch(responseIds: string[]): Promise<void> {
+  if (responseIds.length === 0) return;
+  const supabase = createServiceClient();
+  await supabase
+    .from("responses")
+    .update({ read_at: new Date().toISOString() })
+    .in("id", responseIds)
     .is("read_at", null);
 }
 
@@ -326,10 +375,21 @@ export async function appendResponseNoteForWorkflow(
   await supabase.from("responses").update({ note: nextNote }).eq("id", responseId);
 }
 
+/** Appends the SAME text to each response's note — one read+write per response (notes differ per row). */
+export async function appendResponseNoteForWorkflowBatch(
+  responseIds: string[],
+  text: string,
+): Promise<void> {
+  for (const responseId of responseIds) {
+    await appendResponseNoteForWorkflow(responseId, text);
+  }
+}
+
 export interface WorkflowRunMeta {
   name: string;
   createdBy: string | null;
   webhookSecret: string | null;
+  workspaceId: string;
 }
 
 /** Workflow metadata needed to assemble a RunContext — service-role since runs have no authenticated session. */
@@ -337,11 +397,16 @@ export async function getWorkflowRunMeta(workflowId: string): Promise<WorkflowRu
   const supabase = createServiceClient();
   const { data } = await supabase
     .from("workflows")
-    .select("name, created_by, webhook_secret")
+    .select("name, created_by, webhook_secret, workspace_id")
     .eq("id", workflowId)
     .maybeSingle();
   if (!data) return null;
-  return { name: data.name, createdBy: data.created_by, webhookSecret: data.webhook_secret };
+  return {
+    name: data.name,
+    createdBy: data.created_by,
+    webhookSecret: data.webhook_secret,
+    workspaceId: data.workspace_id,
+  };
 }
 
 /**
@@ -463,5 +528,216 @@ export async function getFormContextForRun(
   return {
     workspaceId: form.workspace_id,
     definition: version.definition as unknown as FormDefinition,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Scheduling (0015): due-workflow polling, optimistic claim, digest window
+// advancement, and the digest response query itself.
+// ---------------------------------------------------------------------------
+
+export interface DueScheduledWorkflow {
+  id: string;
+  definition: WorkflowDefinition;
+  nextRunAt: string;
+  lastDigestAt: string | null;
+  createdAt: string;
+}
+
+/** Enabled workflows whose next_run_at has arrived — polled by the cron route. */
+export async function listDueScheduledWorkflows(
+  now: Date,
+  limit = 25,
+): Promise<DueScheduledWorkflow[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("workflows")
+    .select("id, definition, next_run_at, last_digest_at, created_at")
+    .eq("status", "enabled")
+    .not("next_run_at", "is", null)
+    .lte("next_run_at", now.toISOString())
+    .limit(limit);
+
+  if (error || !data) return [];
+
+  return data
+    .filter((w): w is typeof w & { next_run_at: string } => w.next_run_at !== null)
+    .map((w) => ({
+      id: w.id,
+      definition: w.definition as unknown as WorkflowDefinition,
+      nextRunAt: w.next_run_at,
+      lastDigestAt: w.last_digest_at,
+      createdAt: w.created_at,
+    }));
+}
+
+/**
+ * Optimistically claims a due workflow for one cron tick — the conditional
+ * `.eq("next_run_at", expectedNextRunAt)` means an overlapping tick that won
+ * the race first (and already advanced next_run_at) makes this a no-op
+ * (mirrors claimWorkflowRun's claim-by-conditional-update pattern).
+ */
+export async function claimScheduledWorkflow(
+  workflowId: string,
+  expectedNextRunAt: string,
+  patch: { nextRunAt: string | null; lastDigestAt: string; pause?: boolean },
+): Promise<boolean> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("workflows")
+    .update({
+      next_run_at: patch.nextRunAt,
+      last_digest_at: patch.lastDigestAt,
+      ...(patch.pause ? { status: "paused" } : {}),
+    })
+    .eq("id", workflowId)
+    .eq("next_run_at", expectedNextRunAt)
+    .select("id");
+
+  return !error && !!data && data.length > 0;
+}
+
+/** Advances last_digest_at for a non-scheduled digest run (webhook/manual) — no claim needed, only one caller at a time triggers these paths per request. */
+export async function advanceDigestWindow(workflowId: string, windowEnd: Date): Promise<void> {
+  const supabase = createServiceClient();
+  await supabase
+    .from("workflows")
+    .update({ last_digest_at: windowEnd.toISOString() })
+    .eq("id", workflowId);
+}
+
+export interface DigestResponse {
+  responseId: string;
+  formId: string;
+  formTitle: string;
+  submittedAt: string;
+  answers: { fieldId: string; fieldType: string; value: unknown }[];
+}
+
+export interface DigestResult {
+  responses: DigestResponse[];
+  truncated: boolean;
+}
+
+/** Hard cap on how many responses a single digest run processes — bounds write volume (responseAction) and step latency. */
+export const DIGEST_RESPONSE_LIMIT = 100;
+
+/**
+ * New, non-test responses across `formIds` in `(since, until]` — the digest
+ * context for schedule/webhook/manual runs. `since = null` means "from the
+ * beginning" (a workflow's very first digest run).
+ */
+export async function getDigestResponses(
+  formIds: string[],
+  since: string | null,
+  until: string,
+  limit: number = DIGEST_RESPONSE_LIMIT,
+): Promise<DigestResult> {
+  if (formIds.length === 0) return { responses: [], truncated: false };
+
+  const supabase = createServiceClient();
+  let query = supabase
+    .from("responses")
+    .select("id, form_id, submitted_at")
+    .in("form_id", formIds)
+    .neq("status", "test")
+    .lte("submitted_at", until)
+    .order("submitted_at", { ascending: true })
+    .limit(limit + 1);
+  if (since) query = query.gt("submitted_at", since);
+
+  const { data: responseRows, error } = await query;
+  if (error || !responseRows) return { responses: [], truncated: false };
+
+  const truncated = responseRows.length > limit;
+  const page = truncated ? responseRows.slice(0, limit) : responseRows;
+  if (page.length === 0) return { responses: [], truncated: false };
+
+  const [{ data: answerRows }, { data: formRows }] = await Promise.all([
+    supabase
+      .from("response_answers")
+      .select("response_id, field_id, field_type, value")
+      .in(
+        "response_id",
+        page.map((r) => r.id),
+      ),
+    supabase
+      .from("forms")
+      .select("id, title")
+      .in("id", [...new Set(page.map((r) => r.form_id))]),
+  ]);
+
+  const titleByFormId = new Map((formRows ?? []).map((f) => [f.id, f.title]));
+  const answersByResponse = new Map<
+    string,
+    { fieldId: string; fieldType: string; value: unknown }[]
+  >();
+  for (const a of answerRows ?? []) {
+    const list = answersByResponse.get(a.response_id) ?? [];
+    list.push({ fieldId: a.field_id, fieldType: a.field_type, value: a.value });
+    answersByResponse.set(a.response_id, list);
+  }
+
+  return {
+    responses: page.map((r) => ({
+      responseId: r.id,
+      formId: r.form_id,
+      formTitle: titleByFormId.get(r.form_id) ?? "Formular",
+      submittedAt: r.submitted_at,
+      answers: answersByResponse.get(r.id) ?? [],
+    })),
+    truncated,
+  };
+}
+
+export interface WorkflowByToken {
+  id: string;
+  status: "enabled" | "paused";
+  definition: WorkflowDefinition;
+  lastDigestAt: string | null;
+  createdAt: string;
+}
+
+/** Looks up a workflow by its inbound-webhook token — used by the public trigger route (uniform 404 on any mismatch). */
+export async function getWorkflowByInboundToken(token: string): Promise<WorkflowByToken | null> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("workflows")
+    .select("id, status, definition, last_digest_at, created_at")
+    .eq("inbound_token", token)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    status: data.status as "enabled" | "paused",
+    definition: data.definition as unknown as WorkflowDefinition,
+    lastDigestAt: data.last_digest_at,
+    createdAt: data.created_at,
+  };
+}
+
+export interface WorkflowScheduleMeta {
+  status: "enabled" | "paused";
+  definition: WorkflowDefinition;
+  lastDigestAt: string | null;
+  createdAt: string;
+}
+
+/** Workflow metadata for the manual-trigger server action (status/definition/digest window). */
+export async function getWorkflowScheduleMeta(workflowId: string): Promise<WorkflowScheduleMeta | null> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("workflows")
+    .select("status, definition, last_digest_at, created_at")
+    .eq("id", workflowId)
+    .maybeSingle();
+  if (error || !data) return null;
+
+  return {
+    status: data.status as "enabled" | "paused",
+    definition: data.definition as unknown as WorkflowDefinition,
+    lastDigestAt: data.last_digest_at,
+    createdAt: data.created_at,
   };
 }

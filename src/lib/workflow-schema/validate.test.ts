@@ -4,6 +4,7 @@ import { generateId } from "@/lib/form-schema/ids";
 import type { FormDefinition } from "@/lib/form-schema/schema";
 import { createEmptyWorkflowDefinition } from "./factory";
 import { generateWorkflowId } from "./ids";
+import type { TriggerConfig } from "./nodes";
 import type { WorkflowDefinition } from "./schema";
 import { isWorkflowValid, validateWorkflowDefinition, type WorkflowFormRef } from "./validate";
 
@@ -16,6 +17,12 @@ function baseDef(formIds: string[] = [FORM_ID]): WorkflowDefinition {
 
 function triggerId(def: WorkflowDefinition): string {
   return def.nodes.find((n) => n.type === "trigger")!.id;
+}
+
+function withTrigger(config: TriggerConfig): WorkflowDefinition {
+  const def = createEmptyWorkflowDefinition();
+  def.nodes[0]!.config = config as never;
+  return def;
 }
 
 function formRef(
@@ -471,5 +478,369 @@ describe("validateWorkflowDefinition — field references (multiple trigger form
 
     const result = validateWorkflowDefinition(def, [formA, formB]);
     expect(result.warnings.some((w) => w.code === "FIELD_NOT_IN_ALL_FORMS")).toBe(false);
+  });
+});
+
+describe("validateWorkflowDefinition — non-response trigger types", () => {
+  it("errors when a schedule trigger has no forms selected", () => {
+    const def = withTrigger({ event: "schedule", frequency: "daily", time: "08:00", formIds: [] });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "TRIGGER_NO_FORMS")).toBe(true);
+  });
+
+  it("errors when a scheduled_once trigger has no forms selected", () => {
+    const def = withTrigger({
+      event: "scheduled_once",
+      runAt: "2099-01-01T00:00:00.000Z",
+      formIds: [],
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "TRIGGER_NO_FORMS")).toBe(true);
+  });
+
+  it("allows a webhook_inbound trigger with no forms when the workflow has no digest consumers", () => {
+    const def = withTrigger({ event: "webhook_inbound", formIds: [] });
+    const webhook = generateWorkflowId("node");
+    def.nodes.push({
+      id: webhook,
+      type: "webhook",
+      position: { x: 0, y: 100 },
+      config: { url: "https://example.com/hook", includeAnswers: false },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: webhook,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(isWorkflowValid(result)).toBe(true);
+  });
+
+  it("errors when a formless webhook_inbound trigger feeds a responseAction node", () => {
+    const def = withTrigger({ event: "webhook_inbound", formIds: [] });
+    const action = generateWorkflowId("node");
+    def.nodes.push({
+      id: action,
+      type: "responseAction",
+      position: { x: 0, y: 100 },
+      config: { action: "mark_read" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: action,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "TRIGGER_FORMS_REQUIRED_FOR_DIGEST")).toBe(true);
+  });
+
+  it("errors when a formless manual trigger uses an aiAction node", () => {
+    const def = withTrigger({ event: "manual", formIds: [] });
+    const ai = generateWorkflowId("node");
+    def.nodes.push({
+      id: ai,
+      type: "aiAction",
+      position: { x: 0, y: 100 },
+      config: { task: "summarize" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: ai,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "TRIGGER_FORMS_REQUIRED_FOR_DIGEST")).toBe(true);
+  });
+
+  it("errors when a formless webhook_inbound trigger uses {{digest:…}} in an email body", () => {
+    const def = withTrigger({ event: "webhook_inbound", formIds: [] });
+    const email = generateWorkflowId("node");
+    def.nodes.push({
+      id: email,
+      type: "email",
+      position: { x: 0, y: 100 },
+      config: { to: "creator", subject: "Digest", body: "{{digest:list}}" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: email,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "TRIGGER_FORMS_REQUIRED_FOR_DIGEST")).toBe(true);
+  });
+
+  it("errors when a weekly schedule has no weekday", () => {
+    const def = withTrigger({
+      event: "schedule",
+      frequency: "weekly",
+      time: "08:00",
+      formIds: [FORM_ID],
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "SCHEDULE_CONFIG_INVALID")).toBe(true);
+  });
+
+  it("errors when a monthly schedule has no dayOfMonth", () => {
+    const def = withTrigger({
+      event: "schedule",
+      frequency: "monthly",
+      time: "08:00",
+      formIds: [FORM_ID],
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "SCHEDULE_CONFIG_INVALID")).toBe(true);
+  });
+
+  it("passes for a fully specified weekly schedule", () => {
+    const def = withTrigger({
+      event: "schedule",
+      frequency: "weekly",
+      time: "08:00",
+      weekday: 3,
+      formIds: [FORM_ID],
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(isWorkflowValid(result)).toBe(true);
+  });
+
+  it("errors when scheduled_once's runAt is in the past", () => {
+    const def = withTrigger({
+      event: "scheduled_once",
+      runAt: "2000-01-01T00:00:00.000Z",
+      formIds: [FORM_ID],
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "SCHEDULED_ONCE_IN_PAST")).toBe(true);
+  });
+
+  it("passes when scheduled_once's runAt is in the future", () => {
+    const def = withTrigger({
+      event: "scheduled_once",
+      runAt: "2099-01-01T00:00:00.000Z",
+      formIds: [FORM_ID],
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(isWorkflowValid(result)).toBe(true);
+  });
+});
+
+describe("validateWorkflowDefinition — trigger/action compatibility", () => {
+  it("errors on a condition node when the trigger is not response_submitted", () => {
+    const def = withTrigger({ event: "manual", formIds: [FORM_ID] });
+    const condition = generateWorkflowId("node");
+    def.nodes.push({
+      id: condition,
+      type: "condition",
+      position: { x: 0, y: 100 },
+      config: { logic: "and", rules: [{ fieldId: "fld_x", operator: "is_answered" }] },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: condition,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "CONDITION_UNSUPPORTED_FOR_TRIGGER")).toBe(true);
+  });
+
+  it("does not flag a condition node under a response_submitted trigger", () => {
+    const def = baseDef();
+    const condition = generateWorkflowId("node");
+    def.nodes.push({
+      id: condition,
+      type: "condition",
+      position: { x: 0, y: 100 },
+      config: { logic: "and", rules: [{ fieldId: "fld_x", operator: "is_answered" }] },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: condition,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "CONDITION_UNSUPPORTED_FOR_TRIGGER")).toBe(false);
+  });
+
+  it("errors when an email uses submitter_field under a schedule trigger", () => {
+    const def = withTrigger({
+      event: "schedule",
+      frequency: "daily",
+      time: "08:00",
+      formIds: [FORM_ID],
+    });
+    const email = generateWorkflowId("node");
+    def.nodes.push({
+      id: email,
+      type: "email",
+      position: { x: 0, y: 100 },
+      config: { to: "submitter_field", submitterFieldId: "fld_email", subject: "Hi", body: "Hi" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: email,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "EMAIL_RECIPIENT_UNSUPPORTED_FOR_TRIGGER")).toBe(
+      true,
+    );
+  });
+
+  it("errors when an aiAction uses classify under a webhook_inbound trigger", () => {
+    const def = withTrigger({ event: "webhook_inbound", formIds: [FORM_ID] });
+    const ai = generateWorkflowId("node");
+    def.nodes.push({
+      id: ai,
+      type: "aiAction",
+      position: { x: 0, y: 100 },
+      config: { task: "classify", categories: ["a", "b"] },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: ai,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "AI_TASK_UNSUPPORTED_FOR_TRIGGER")).toBe(true);
+  });
+
+  it("does not flag an aiAction summarize task under a manual trigger", () => {
+    const def = withTrigger({ event: "manual", formIds: [FORM_ID] });
+    const ai = generateWorkflowId("node");
+    def.nodes.push({
+      id: ai,
+      type: "aiAction",
+      position: { x: 0, y: 100 },
+      config: { task: "summarize" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: ai,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.errors.some((e) => e.code === "AI_TASK_UNSUPPORTED_FOR_TRIGGER")).toBe(false);
+  });
+});
+
+describe("validateWorkflowDefinition — placeholder compatibility", () => {
+  it("warns when an email uses {{field:…}} under a manual trigger", () => {
+    const def = withTrigger({ event: "manual", formIds: [FORM_ID] });
+    const email = generateWorkflowId("node");
+    def.nodes.push({
+      id: email,
+      type: "email",
+      position: { x: 0, y: 100 },
+      config: { to: "creator", subject: "Hi {{field:fld_x}}", body: "Body" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: email,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.warnings.some((w) => w.code === "PLACEHOLDER_UNSUPPORTED_FOR_TRIGGER")).toBe(
+      true,
+    );
+  });
+
+  it("warns when an email uses {{digest:…}} under a response_submitted trigger", () => {
+    const def = baseDef();
+    const email = generateWorkflowId("node");
+    def.nodes.push({
+      id: email,
+      type: "email",
+      position: { x: 0, y: 100 },
+      config: { to: "creator", subject: "Digest", body: "{{digest:count}}" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: email,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.warnings.some((w) => w.code === "PLACEHOLDER_UNSUPPORTED_FOR_TRIGGER")).toBe(
+      true,
+    );
+  });
+
+  it("warns when a responseAction note uses {{payload:json}} under a schedule trigger", () => {
+    const def = withTrigger({
+      event: "schedule",
+      frequency: "daily",
+      time: "08:00",
+      formIds: [FORM_ID],
+    });
+    const action = generateWorkflowId("node");
+    def.nodes.push({
+      id: action,
+      type: "responseAction",
+      position: { x: 0, y: 100 },
+      config: { action: "append_note", noteText: "{{payload:json}}" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: action,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.warnings.some((w) => w.code === "PLACEHOLDER_UNSUPPORTED_FOR_TRIGGER")).toBe(
+      true,
+    );
+  });
+
+  it("does not warn about {{payload:json}} under a webhook_inbound trigger", () => {
+    const def = withTrigger({ event: "webhook_inbound", formIds: [FORM_ID] });
+    const action = generateWorkflowId("node");
+    def.nodes.push({
+      id: action,
+      type: "responseAction",
+      position: { x: 0, y: 100 },
+      config: { action: "append_note", noteText: "{{payload:json}}" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: action,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.warnings.some((w) => w.code === "PLACEHOLDER_UNSUPPORTED_FOR_TRIGGER")).toBe(
+      false,
+    );
+  });
+
+  it("does not warn about {{field:…}}/{{response:…}} under a response_submitted trigger", () => {
+    const def = baseDef();
+    const email = generateWorkflowId("node");
+    def.nodes.push({
+      id: email,
+      type: "email",
+      position: { x: 0, y: 100 },
+      config: { to: "creator", subject: "Hi {{field:fld_x}}", body: "{{response:all}}" },
+    });
+    def.edges.push({
+      id: generateWorkflowId("edge"),
+      source: triggerId(def),
+      target: email,
+      sourceHandle: "out",
+    });
+    const result = validateWorkflowDefinition(def);
+    expect(result.warnings.some((w) => w.code === "PLACEHOLDER_UNSUPPORTED_FOR_TRIGGER")).toBe(
+      false,
+    );
   });
 });

@@ -5,6 +5,7 @@ import {
   enqueueWorkflowRun,
   finishWorkflowRun,
   finishWorkflowRunStep,
+  getDigestResponses,
   getFormContextForRun,
   getResponseAnswersForRun,
   getUserEmailById,
@@ -12,9 +13,10 @@ import {
   getWorkflowRunMeta,
   listEnabledWorkflowsForForm,
   startWorkflowRunStep,
+  type DigestResponse as RepoDigestResponse,
 } from "@/lib/db/repositories/workflow-runs";
 import { defaultActionRegistry } from "./actions/registry";
-import type { RunContext } from "./context";
+import type { DigestResponse, RunContext } from "./context";
 import { runWorkflowGraph } from "./interpreter";
 
 /**
@@ -30,10 +32,13 @@ export interface EnqueueParams {
 }
 
 /**
- * Enqueues one run per enabled workflow for this form, synchronously — so a
- * run exists (retryable if `queued`) even if the process dies before
- * `after()` gets to execute it. Never throws: a broken enqueue must not fail
- * the visitor's submission.
+ * Enqueues one run per enabled response_submitted workflow for this form,
+ * synchronously — so a run exists (retryable if `queued`) even if the
+ * process dies before `after()` gets to execute it. Never throws: a broken
+ * enqueue must not fail the visitor's submission.
+ *
+ * listEnabledWorkflowsForForm already filters out schedule/webhook/manual
+ * workflows (their formIds are a digest scope, not a submission trigger).
  */
 export async function enqueueWorkflowRuns(params: EnqueueParams): Promise<string[]> {
   try {
@@ -47,6 +52,8 @@ export async function enqueueWorkflowRuns(params: EnqueueParams): Promise<string
         formId: params.formId,
         responseId: params.responseId,
         definition: workflow.definition,
+        triggerType: "response_submitted",
+        dedupeKey: `response:${params.responseId}`,
       });
       if (runId) runIds.push(runId);
     }
@@ -64,40 +71,91 @@ function buildAnswerMap(answers: { fieldId: string; value: unknown }[]): AnswerM
   return map;
 }
 
+function toDigestResponse(r: RepoDigestResponse): DigestResponse {
+  return {
+    responseId: r.responseId,
+    formId: r.formId,
+    formTitle: r.formTitle,
+    submittedAt: r.submittedAt,
+    answers: r.answers,
+  };
+}
+
 async function assembleContext(runId: string, dryRun: boolean): Promise<RunContext | null> {
   const run = await getWorkflowRun(runId);
   if (!run) return null;
 
-  const responseData = await getResponseAnswersForRun(run.responseId);
-  if (!responseData) return null;
-
-  const formContext = await getFormContextForRun(run.formId, responseData.formVersionId);
-  if (!formContext) return null;
-
   const workflowMeta = await getWorkflowRunMeta(run.workflowId);
-  const creatorEmail = workflowMeta?.createdBy
+  if (!workflowMeta) return null;
+  const creatorEmail = workflowMeta.createdBy
     ? await getUserEmailById(workflowMeta.createdBy)
     : null;
 
-  return {
+  const base = {
     runId,
     workflowId: run.workflowId,
-    formId: run.formId,
-    responseId: run.responseId,
+    triggerType: run.triggerType,
     isTest: run.isTest,
     dryRun,
-    form: formContext.definition,
-    answers: buildAnswerMap(responseData.answers),
-    rawAnswers: responseData.answers,
-    response: { id: run.responseId, submittedAt: responseData.submittedAt },
     workflow: {
       id: run.workflowId,
-      name: workflowMeta?.name ?? "",
-      webhookSecret: workflowMeta?.webhookSecret ?? null,
+      name: workflowMeta.name,
+      webhookSecret: workflowMeta.webhookSecret,
     },
-    createdByUserId: workflowMeta?.createdBy ?? null,
+    createdByUserId: workflowMeta.createdBy,
     creatorEmail,
-    workspaceId: formContext.workspaceId,
+  };
+
+  if (run.triggerType === "response_submitted") {
+    if (!run.responseId || !run.formId) return null;
+
+    const responseData = await getResponseAnswersForRun(run.responseId);
+    if (!responseData) return null;
+
+    const formContext = await getFormContextForRun(run.formId, responseData.formVersionId);
+    if (!formContext) return null;
+
+    return {
+      ...base,
+      formId: run.formId,
+      responseId: run.responseId,
+      form: formContext.definition,
+      answers: buildAnswerMap(responseData.answers),
+      rawAnswers: responseData.answers,
+      response: { id: run.responseId, submittedAt: responseData.submittedAt },
+      digest: null,
+      webhookPayload: null,
+      workspaceId: formContext.workspaceId,
+    };
+  }
+
+  // Digest-based trigger (schedule / scheduled_once / webhook_inbound / manual):
+  // the window is frozen in trigger_context at enqueue time, so a retry
+  // re-reads the exact same window rather than drifting forward.
+  const windowStart = run.triggerContext?.windowStart ?? null;
+  const windowEnd = run.triggerContext?.windowEnd ?? new Date().toISOString();
+  const definitionTrigger = run.definitionSnapshot.nodes.find((n) => n.type === "trigger");
+  const formIds =
+    definitionTrigger?.type === "trigger" ? definitionTrigger.config.formIds : [];
+
+  const digestResult = await getDigestResponses(formIds, windowStart, windowEnd);
+
+  return {
+    ...base,
+    formId: null,
+    responseId: null,
+    form: null,
+    answers: {},
+    rawAnswers: [],
+    response: null,
+    digest: {
+      responses: digestResult.responses.map(toDigestResponse),
+      windowStart,
+      windowEnd,
+      truncated: digestResult.truncated,
+    },
+    webhookPayload: run.triggerContext?.payload ?? null,
+    workspaceId: workflowMeta.workspaceId,
   };
 }
 
@@ -119,7 +177,7 @@ export async function executeWorkflowRun(
     await finishWorkflowRun(runId, {
       status: "failed",
       errorCode: "CONTEXT_UNAVAILABLE",
-      errorMessage: "Formular oder Antwort für diesen Lauf konnte nicht geladen werden.",
+      errorMessage: "Kontext für diesen Lauf konnte nicht geladen werden.",
     });
     return;
   }

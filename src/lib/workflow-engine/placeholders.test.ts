@@ -17,6 +17,7 @@ function makeContext(overrides: Partial<RunContext> = {}): RunContext {
   return {
     runId: "run_1",
     workflowId: "wf_1",
+    triggerType: "response_submitted",
     formId: "form_1",
     responseId: "resp_1",
     isTest: false,
@@ -25,6 +26,8 @@ function makeContext(overrides: Partial<RunContext> = {}): RunContext {
     answers: {},
     rawAnswers: [],
     response: { id: "resp_1", submittedAt: "2026-01-01T10:00:00.000Z" },
+    digest: null,
+    webhookPayload: null,
     workflow: { id: "wf_1", name: "Test-Workflow", webhookSecret: null },
     createdByUserId: "user_1",
     creatorEmail: "creator@example.com",

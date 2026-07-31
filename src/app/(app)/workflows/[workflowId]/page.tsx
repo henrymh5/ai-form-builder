@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import { listFormOptionsWithDefinitions } from "@/lib/db/repositories/forms";
 import { listResponses } from "@/lib/db/repositories/responses";
-import { getWorkflow, getWorkflowWebhookSecret } from "@/lib/db/repositories/workflows";
+import {
+  getWorkflow,
+  getWorkflowInboundToken,
+  getWorkflowWebhookSecret,
+} from "@/lib/db/repositories/workflows";
 import { WorkflowEditorClient } from "@/features/workflow-builder/workflow-editor-client";
 import type { TestRunResponseOption } from "@/features/workflow-builder/test-run-dialog";
 
@@ -17,8 +21,9 @@ export default async function WorkflowEditorPage({ params }: WorkflowEditorPageP
   const workflow = await getWorkflow(workflowId);
   if (!workflow) notFound();
 
-  const [webhookSecret, forms] = await Promise.all([
+  const [webhookSecret, inboundToken, forms] = await Promise.all([
     getWorkflowWebhookSecret(workflowId),
+    getWorkflowInboundToken(workflowId),
     listFormOptionsWithDefinitions(workflow.workspaceId),
   ]);
 
@@ -41,6 +46,7 @@ export default async function WorkflowEditorPage({ params }: WorkflowEditorPageP
       workflow={workflow}
       forms={forms}
       webhookSecret={webhookSecret}
+      inboundToken={inboundToken}
       responses={responses}
     />
   );

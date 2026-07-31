@@ -17,7 +17,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { startTestRunAction } from "@/features/workflow-builder/actions/run-actions";
+import { getTriggerConfig } from "@/lib/workflow-schema/nodes";
 import { useWorkflowEditorStore } from "./workflow-editor-store";
 
 function formatDateTime(iso: string): string {
@@ -56,19 +58,25 @@ export function TestRunDialog({
   const [selectedResponseId, setSelectedResponseId] = useState<string | undefined>(
     responses[0]?.id,
   );
+  const [payload, setPayload] = useState("");
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
   const dirty = useWorkflowEditorStore((s) => s.dirty);
   const getDefinition = useWorkflowEditorStore((s) => s.getDefinition);
 
+  const triggerConfig = getTriggerConfig(getDefinition().nodes);
+  const isResponseTrigger = triggerConfig?.event === "response_submitted";
+  const isWebhookTrigger = triggerConfig?.event === "webhook_inbound";
+
   async function handleRun() {
-    if (!selectedResponseId) return;
+    if (isResponseTrigger && !selectedResponseId) return;
     setPending(true);
     setResult(null);
     const outcome = await startTestRunAction({
       workflowId,
-      responseId: selectedResponseId,
+      responseId: isResponseTrigger ? selectedResponseId : undefined,
       definition: getDefinition(),
+      payload: isWebhookTrigger && payload.trim() ? payload : undefined,
     });
     setResult(outcome);
     setPending(false);
@@ -92,28 +100,53 @@ export function TestRunDialog({
           </p>
         ) : null}
 
-        {responses.length === 0 ? (
-          <p className="text-text-secondary text-sm">
-            Es gibt noch keine Antworten in den ausgewählten Trigger-Formularen, mit denen getestet
-            werden kann.
-          </p>
+        {isResponseTrigger ? (
+          responses.length === 0 ? (
+            <p className="text-text-secondary text-sm">
+              Es gibt noch keine Antworten in den ausgewählten Trigger-Formularen, mit denen
+              getestet werden kann.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <Select value={selectedResponseId} onValueChange={setSelectedResponseId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Antwort wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {responses.map((response) => (
+                    <SelectItem key={response.id} value={response.id}>
+                      {response.formTitle} — {formatDateTime(response.submittedAt)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-text-muted text-xs">
+                Aktionen werden simuliert — es werden keine echten E-Mails oder Webhooks ausgelöst.
+              </p>
+            </div>
+          )
         ) : (
           <div className="space-y-4">
-            <Select value={selectedResponseId} onValueChange={setSelectedResponseId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Antwort wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {responses.map((response) => (
-                  <SelectItem key={response.id} value={response.id}>
-                    {response.formTitle} — {formatDateTime(response.submittedAt)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-text-muted text-xs">
-              Aktionen werden simuliert — es werden keine echten E-Mails oder Webhooks ausgelöst.
+            <p className="text-text-secondary text-sm">
+              Simuliert einen Digest-Lauf mit den seit dem letzten echten Lauf eingegangenen
+              Antworten der ausgewählten Formulare (max. 7 Tage zurück). Aktionen werden
+              simuliert — es werden keine echten E-Mails oder Webhooks ausgelöst, und der
+              Digest-Zeitraum wird durch den Testlauf nicht fortgeschrieben.
             </p>
+            {isWebhookTrigger ? (
+              <div className="space-y-1.5">
+                <label className="text-text-secondary text-sm" htmlFor="test-run-payload">
+                  Beispiel-Payload (JSON, optional)
+                </label>
+                <Textarea
+                  id="test-run-payload"
+                  value={payload}
+                  onChange={(e) => setPayload(e.target.value)}
+                  placeholder={`{"example": true}`}
+                  rows={4}
+                />
+              </div>
+            ) : null}
           </div>
         )}
 
@@ -128,7 +161,7 @@ export function TestRunDialog({
             type="button"
             variant="primary"
             onClick={handleRun}
-            disabled={pending || !selectedResponseId}
+            disabled={pending || (isResponseTrigger && !selectedResponseId)}
           >
             {pending ? "Läuft…" : "Testlauf starten"}
           </Button>

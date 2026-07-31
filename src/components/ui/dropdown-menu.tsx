@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import { Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -39,6 +40,34 @@ export const DropdownMenuItem = React.forwardRef<
   />
 ));
 DropdownMenuItem.displayName = "DropdownMenuItem";
+
+/**
+ * Keeps the menu open on select (the multi-select dropdown's whole point is
+ * toggling several options in one interaction) — callers get the default
+ * Radix behavior of closing on select unless they override it themselves.
+ */
+export const DropdownMenuCheckboxItem = React.forwardRef<
+  React.ComponentRef<typeof DropdownMenuPrimitive.CheckboxItem>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
+>(({ className, children, checked, ...props }, ref) => (
+  <DropdownMenuPrimitive.CheckboxItem
+    ref={ref}
+    checked={checked}
+    className={cn(
+      "flex cursor-pointer items-center gap-2 rounded-sm py-1.5 pr-2 pl-7 text-sm outline-none select-none",
+      "focus:bg-surface-subtle data-disabled:pointer-events-none data-disabled:opacity-50",
+      "text-text-primary relative",
+      className,
+    )}
+    {...props}
+  >
+    <DropdownMenuPrimitive.ItemIndicator className="absolute left-1.5 flex size-4 items-center justify-center">
+      <Check className="size-3.5" />
+    </DropdownMenuPrimitive.ItemIndicator>
+    {children}
+  </DropdownMenuPrimitive.CheckboxItem>
+));
+DropdownMenuCheckboxItem.displayName = "DropdownMenuCheckboxItem";
 
 export function DropdownMenuSeparator({
   className,

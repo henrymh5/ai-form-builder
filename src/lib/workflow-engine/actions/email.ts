@@ -20,6 +20,9 @@ function resolveRecipient(config: EmailNodeConfig, ctx: RunContext): string {
   }
 
   if (!config.submitterFieldId) throw new Error("Kein Empfängerfeld konfiguriert.");
+  if (!ctx.responseId) {
+    throw new Error("Empfängerfeld ist nur bei einer einzelnen Antwort verfügbar.");
+  }
   const answer = ctx.rawAnswers.find((a) => a.fieldId === config.submitterFieldId);
   const value = typeof answer?.value === "string" ? answer.value : "";
   if (!EMAIL_PATTERN.test(value)) {

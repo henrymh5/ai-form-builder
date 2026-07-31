@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Play, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   saveWorkflowAction,
   toggleWorkflowStatusAction,
 } from "@/features/workflow-builder/actions/workflow-actions";
+import { runManualWorkflowAction } from "@/features/workflow-builder/actions/run-actions";
+import { getTriggerConfig } from "@/lib/workflow-schema/nodes";
 import { useWorkflowEditorStore } from "./workflow-editor-store";
 import { TestRunDialog, type TestRunResponseOption } from "./test-run-dialog";
 import type { WorkflowStatus } from "@/lib/db/repositories/workflows";
@@ -38,8 +40,11 @@ export function WorkflowEditorToolbar({
   const [status, setStatus] = useState(initialStatus);
   const [toggleError, setToggleError] = useState<string | null>(null);
   const [togglePending, setTogglePending] = useState(false);
+  const [runPending, setRunPending] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
 
   const validation = validate();
+  const isManualTrigger = getTriggerConfig(getDefinition().nodes)?.event === "manual";
 
   async function handleSave() {
     markSaved(true);
@@ -66,6 +71,14 @@ export function WorkflowEditorToolbar({
     setStatus(result.status);
     if (result.error) setToggleError(result.error);
     setTogglePending(false);
+  }
+
+  async function handleRunManual() {
+    setRunError(null);
+    setRunPending(true);
+    const result = await runManualWorkflowAction({ workflowId });
+    if (!result.ok) setRunError(result.error ?? "Ausführung fehlgeschlagen.");
+    setRunPending(false);
   }
 
   return (
@@ -101,6 +114,25 @@ export function WorkflowEditorToolbar({
           Läufe
         </Link>
         <TestRunDialog workflowId={workflowId} responses={responses} />
+        {isManualTrigger ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleRunManual}
+            disabled={runPending || dirty || status !== "enabled"}
+            title={
+              dirty
+                ? "Erst speichern, dann ausführen."
+                : status !== "enabled"
+                  ? "Der Workflow muss aktiviert sein."
+                  : undefined
+            }
+          >
+            <Play className="size-4" />
+            {runPending ? "Läuft …" : "Jetzt ausführen"}
+          </Button>
+        ) : null}
+        {runError ? <span className="text-error text-xs">{runError}</span> : null}
         {toggleError ? <span className="text-error text-xs">{toggleError}</span> : null}
         <div className="flex items-center gap-2">
           <span className="text-text-secondary text-sm">Aktiviert</span>

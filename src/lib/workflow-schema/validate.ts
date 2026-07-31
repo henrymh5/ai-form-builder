@@ -1,5 +1,5 @@
 import type { FormDefinition } from "@/lib/form-schema/schema";
-import { allowedHandlesFor, type WorkflowEdge, type WorkflowNode } from "./nodes";
+import { allowedHandlesFor, getTriggerConfig, type WorkflowEdge, type WorkflowNode } from "./nodes";
 import type { WorkflowDefinition } from "./schema";
 
 /**
@@ -14,7 +14,10 @@ export type WorkflowValidationIssueCode =
   | "MULTIPLE_TRIGGERS"
   | "TRIGGER_HAS_INCOMING_EDGE"
   | "TRIGGER_NO_FORMS"
+  | "TRIGGER_FORMS_REQUIRED_FOR_DIGEST"
   | "TRIGGER_UNKNOWN_FORM"
+  | "SCHEDULE_CONFIG_INVALID"
+  | "SCHEDULED_ONCE_IN_PAST"
   | "CYCLIC_GRAPH"
   | "UNREACHABLE_NODE"
   | "DUPLICATE_NODE_ID"
@@ -24,7 +27,11 @@ export type WorkflowValidationIssueCode =
   | "CONDITION_REFERENCES_UNKNOWN_FIELD"
   | "EMAIL_REFERENCES_UNKNOWN_FIELD"
   | "EMAIL_MISSING_RECIPIENT"
-  | "FIELD_NOT_IN_ALL_FORMS";
+  | "FIELD_NOT_IN_ALL_FORMS"
+  | "CONDITION_UNSUPPORTED_FOR_TRIGGER"
+  | "EMAIL_RECIPIENT_UNSUPPORTED_FOR_TRIGGER"
+  | "AI_TASK_UNSUPPORTED_FOR_TRIGGER"
+  | "PLACEHOLDER_UNSUPPORTED_FOR_TRIGGER";
 
 /** A form the trigger can reference — just enough to resolve/validate field references. */
 export interface WorkflowFormRef {
@@ -74,16 +81,35 @@ function checkSingleTrigger(
   }
 
   const knownFormIds = forms ? new Set(forms.map((f) => f.id)) : undefined;
+  const requiresDigestConsumers = new Set(["responseAction", "aiAction"]);
+  const usesDigestPlaceholder = definition.nodes.some(
+    (n) => n.type === "email" && extractPlaceholderTokens(n.config.subject + n.config.body).some((t) => t.startsWith("digest:")),
+  );
+
   for (const trigger of triggers) {
     if (trigger.type !== "trigger") continue;
-    if (trigger.config.formIds.length === 0) {
+    const { config } = trigger;
+
+    const formIdsRequired = config.event === "response_submitted" || config.event === "schedule" || config.event === "scheduled_once";
+    if (formIdsRequired && config.formIds.length === 0) {
       errors.push({
         code: "TRIGGER_NO_FORMS",
         message: "Der Trigger benötigt mindestens ein ausgewähltes Formular.",
         nodeId: trigger.id,
       });
+    } else if (
+      (config.event === "webhook_inbound" || config.event === "manual") &&
+      config.formIds.length === 0 &&
+      (definition.nodes.some((n) => requiresDigestConsumers.has(n.type)) || usesDigestPlaceholder)
+    ) {
+      errors.push({
+        code: "TRIGGER_FORMS_REQUIRED_FOR_DIGEST",
+        message:
+          "Dieser Workflow verarbeitet Antworten (Antwort-Aktion, KI-Aktion oder {{digest:…}}) — dafür müssen Formulare ausgewählt sein.",
+        nodeId: trigger.id,
+      });
     } else if (knownFormIds) {
-      for (const formId of trigger.config.formIds) {
+      for (const formId of config.formIds) {
         if (!knownFormIds.has(formId)) {
           warnings.push({
             code: "TRIGGER_UNKNOWN_FORM",
@@ -91,6 +117,33 @@ function checkSingleTrigger(
             nodeId: trigger.id,
           });
         }
+      }
+    }
+
+    if (config.event === "schedule") {
+      const invalid =
+        (config.frequency === "weekly" && config.weekday === undefined) ||
+        (config.frequency === "monthly" && config.dayOfMonth === undefined);
+      if (invalid) {
+        errors.push({
+          code: "SCHEDULE_CONFIG_INVALID",
+          message:
+            config.frequency === "weekly"
+              ? "Für einen wöchentlichen Zeitplan muss ein Wochentag ausgewählt sein."
+              : "Für einen monatlichen Zeitplan muss ein Tag im Monat ausgewählt sein.",
+          nodeId: trigger.id,
+        });
+      }
+    }
+
+    if (config.event === "scheduled_once") {
+      const runAt = new Date(config.runAt);
+      if (!Number.isNaN(runAt.getTime()) && runAt <= new Date()) {
+        errors.push({
+          code: "SCHEDULED_ONCE_IN_PAST",
+          message: "Der gewählte Zeitpunkt liegt in der Vergangenheit.",
+          nodeId: trigger.id,
+        });
       }
     }
   }
@@ -245,7 +298,12 @@ function checkFieldReference(
   }
 }
 
-/** Checks node config against the trigger forms' field IDs (rules, placeholders). */
+/**
+ * Checks node config against the trigger forms' field IDs (rules,
+ * placeholders) — only meaningful under a `response_submitted` trigger,
+ * where `{{field:…}}` and condition rules actually resolve against a real
+ * response. Called only for that trigger event (see validateWorkflowDefinition).
+ */
 function checkFieldReferences(
   definition: WorkflowDefinition,
   forms: WorkflowFormRef[],
@@ -332,10 +390,108 @@ function checkFieldReferences(
   }
 }
 
+/**
+ * Enforces which node configurations are hard-incompatible with the
+ * trigger's event — these fail at runtime (interpreter throws), so they
+ * must block enabling rather than just warn. `response_submitted` allows
+ * everything; every other trigger forbids single-response-only constructs.
+ */
+function checkTriggerActionCompatibility(
+  definition: WorkflowDefinition,
+  issues: WorkflowValidationIssue[],
+) {
+  const triggerConfig = getTriggerConfig(definition.nodes);
+  if (!triggerConfig || triggerConfig.event === "response_submitted") return;
+
+  for (const node of definition.nodes) {
+    if (node.type === "condition") {
+      issues.push({
+        code: "CONDITION_UNSUPPORTED_FOR_TRIGGER",
+        message: "Bedingungen benötigen eine einzelne Antwort und funktionieren nur beim Trigger „Neue Formularantwort“.",
+        nodeId: node.id,
+      });
+    }
+
+    if (node.type === "email" && node.config.to === "submitter_field") {
+      issues.push({
+        code: "EMAIL_RECIPIENT_UNSUPPORTED_FOR_TRIGGER",
+        message: "Empfängerfeld benötigt eine einzelne Antwort und funktioniert nur beim Trigger „Neue Formularantwort“.",
+        nodeId: node.id,
+      });
+    }
+
+    if (node.type === "aiAction" && node.config.task !== "summarize") {
+      issues.push({
+        code: "AI_TASK_UNSUPPORTED_FOR_TRIGGER",
+        message: "Einordnen und Übersetzen benötigen eine einzelne Antwort und funktionieren nur beim Trigger „Neue Formularantwort“.",
+        nodeId: node.id,
+      });
+    }
+  }
+}
+
+/**
+ * Warns about placeholders that will silently resolve to "" given the
+ * trigger's event — a hard-fail config (checked above) is an error, but an
+ * empty-output mismatch is just a warning (e.g. leaving a leftover
+ * {{field:…}} in an email body after switching a workflow to a schedule
+ * trigger).
+ */
+function checkPlaceholderCompatibility(
+  definition: WorkflowDefinition,
+  issues: WorkflowValidationIssue[],
+) {
+  const triggerConfig = getTriggerConfig(definition.nodes);
+  if (!triggerConfig) return;
+  const isResponseTrigger = triggerConfig.event === "response_submitted";
+  const isWebhookTrigger = triggerConfig.event === "webhook_inbound";
+
+  function checkText(text: string, nodeId: string) {
+    for (const token of extractPlaceholderTokens(text)) {
+      const isFieldOrResponseToken = token.startsWith("field:") || token.startsWith("response:");
+      const isDigestToken = token.startsWith("digest:");
+      const isPayloadToken = token.startsWith("payload:");
+
+      if (isFieldOrResponseToken && !isResponseTrigger) {
+        issues.push({
+          code: "PLACEHOLDER_UNSUPPORTED_FOR_TRIGGER",
+          message: `Der Platzhalter "{{${token}}}" liefert bei diesem Trigger keinen Wert (nur bei „Neue Formularantwort“).`,
+          nodeId,
+        });
+      }
+      if (isDigestToken && isResponseTrigger) {
+        issues.push({
+          code: "PLACEHOLDER_UNSUPPORTED_FOR_TRIGGER",
+          message: `Der Platzhalter "{{${token}}}" liefert beim Trigger „Neue Formularantwort“ keinen Wert.`,
+          nodeId,
+        });
+      }
+      if (isPayloadToken && !isWebhookTrigger) {
+        issues.push({
+          code: "PLACEHOLDER_UNSUPPORTED_FOR_TRIGGER",
+          message: `Der Platzhalter "{{${token}}}" liefert nur beim Trigger „Eingehender Webhook“ einen Wert.`,
+          nodeId,
+        });
+      }
+    }
+  }
+
+  for (const node of definition.nodes) {
+    if (node.type === "email") checkText(node.config.subject + node.config.body, node.id);
+    if (node.type === "responseAction" && node.config.noteText) checkText(node.config.noteText, node.id);
+  }
+}
+
 const FIELD_PLACEHOLDER_PATTERN = /\{\{field:([^}]+)\}\}/g;
+const ANY_PLACEHOLDER_PATTERN = /\{\{([a-z]+:[^}]*)\}\}/g;
 
 export function extractFieldPlaceholders(text: string): string[] {
   return [...text.matchAll(FIELD_PLACEHOLDER_PATTERN)].map((m) => m[1]!.trim());
+}
+
+/** Extracts every `{{namespace:…}}` token (e.g. "field:fld_x", "digest:count") for cross-trigger-compatibility checks. */
+export function extractPlaceholderTokens(text: string): string[] {
+  return [...text.matchAll(ANY_PLACEHOLDER_PATTERN)].map((m) => m[1]!.trim());
 }
 
 /**
@@ -359,11 +515,12 @@ export function validateWorkflowDefinition(
   checkEdges(definition, errors);
   checkAcyclic(definition, errors);
   checkReachability(definition, warnings);
+  checkTriggerActionCompatibility(definition, errors);
+  checkPlaceholderCompatibility(definition, warnings);
 
-  if (forms) {
-    const trigger = definition.nodes.find((n) => n.type === "trigger");
-    const triggerFormIds =
-      trigger?.type === "trigger" ? new Set(trigger.config.formIds) : new Set();
+  const triggerConfig = getTriggerConfig(definition.nodes);
+  if (forms && triggerConfig?.event === "response_submitted") {
+    const triggerFormIds = new Set(triggerConfig.formIds);
     const triggerForms = forms.filter((f) => triggerFormIds.has(f.id));
     checkFieldReferences(definition, triggerForms, warnings);
   }

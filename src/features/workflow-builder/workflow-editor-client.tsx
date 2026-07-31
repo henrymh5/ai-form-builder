@@ -15,11 +15,13 @@ export function WorkflowEditorClient({
   workflow,
   forms,
   webhookSecret,
+  inboundToken,
   responses,
 }: {
   workflow: WorkflowRecord;
   forms: WorkflowFormRef[];
   webhookSecret: string | null;
+  inboundToken: string | null;
   responses: TestRunResponseOption[];
 }) {
   const load = useWorkflowEditorStore((s) => s.load);
@@ -52,7 +54,7 @@ export function WorkflowEditorClient({
           <div className="min-w-0 flex-1">
             <WorkflowCanvas />
           </div>
-          <ConfigPanel webhookSecret={webhookSecret} />
+          <ConfigPanel webhookSecret={webhookSecret} inboundToken={inboundToken} />
         </ReactFlowProvider>
       </div>
     </div>

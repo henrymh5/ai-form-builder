@@ -19,6 +19,14 @@ const NODE_TYPE_LABEL: Record<string, string> = {
   aiAction: "KI-Aktion",
 };
 
+const TRIGGER_TYPE_LABEL: Record<WorkflowRunSummary["triggerType"], string> = {
+  response_submitted: "Formularantwort",
+  schedule: "Zeitplan",
+  scheduled_once: "Einmalig",
+  webhook_inbound: "Webhook",
+  manual: "Manuell",
+};
+
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("de-DE", {
     day: "2-digit",
@@ -58,6 +66,7 @@ export function RunsTable({
           <tr className="border-border bg-surface-subtle text-text-secondary border-b text-left">
             <th className="px-4 py-2 font-medium" />
             <th className="px-4 py-2 font-medium">Zeitpunkt</th>
+            <th className="px-4 py-2 font-medium">Ausgelöst durch</th>
             <th className="px-4 py-2 font-medium">Status</th>
             <th className="px-4 py-2 font-medium">Versuch</th>
             <th className="px-4 py-2 font-medium">Fehler</th>
@@ -93,6 +102,9 @@ export function RunsTable({
                       <span className="text-text-muted ml-1.5 text-xs">(Test)</span>
                     ) : null}
                   </td>
+                  <td className="text-text-secondary px-4 py-2 text-xs">
+                    {TRIGGER_TYPE_LABEL[run.triggerType]}
+                  </td>
                   <td className="px-4 py-2">
                     <RunStatusBadge status={run.status} />
                   </td>
@@ -116,7 +128,7 @@ export function RunsTable({
                 {isExpanded ? (
                   <tr key={`${run.id}-steps`} className="border-border bg-surface-subtle border-b">
                     <td />
-                    <td colSpan={5} className="px-4 py-3">
+                    <td colSpan={6} className="px-4 py-3">
                       {steps.length === 0 ? (
                         <p className="text-text-muted text-xs">Keine Schritte protokolliert.</p>
                       ) : (

@@ -84,3 +84,14 @@ Wendet alle Migrationen unter `supabase/migrations/` frisch an.
 ## Deployment
 
 Vercel (App) + Supabase Cloud (DB). Produktions-Migrationen über `pnpm exec supabase db push` gegen das verlinkte Projekt; Umgebungsvariablen entsprechend `.env.example` in den Vercel-Projekteinstellungen setzen.
+
+### Workflow-Scheduler (Zeitplan-/Einmalig-Trigger)
+
+Zeitgesteuerte Workflow-Trigger (Zeitplan, Einmalig zu Datum/Uhrzeit) werden von `POST /api/cron/workflows` ausgelöst, das per Supabase pg_cron + pg_net alle 5 Minuten aufgerufen wird — das Provisionieren dieses Cron-Jobs ist **nicht** Teil der Migrationen, da er die deployte App-URL und `CRON_SECRET` zur Laufzeit braucht:
+
+1. `CRON_SECRET` in den Vercel-Umgebungsvariablen setzen (langer zufälliger Wert).
+2. `docs/cron-setup.sql` mit der echten App-URL und demselben `CRON_SECRET` befüllen und einmalig im Supabase SQL-Editor des Zielprojekts ausführen (idempotent — kann bei Bedarf erneut ausgeführt werden).
+3. Lokal feuert dieser Job nicht automatisch (pg_net erreicht `localhost` nicht aus dem Supabase-Docker-Netzwerk) — die Route stattdessen manuell testen:
+   ```bash
+   curl -X POST http://localhost:3000/api/cron/workflows -H "Authorization: Bearer $CRON_SECRET"
+   ```

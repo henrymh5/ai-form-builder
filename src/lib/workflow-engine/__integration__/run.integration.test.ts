@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { customAlphabet } from "nanoid";
 import { createTestUser, deleteTestUser, serviceClient } from "@/lib/db/__integration__/helpers";
 import { createEmptyFormDefinition } from "@/lib/form-schema/factory";
 import { CURRENT_SCHEMA_VERSION } from "@/lib/form-schema/schema";
@@ -8,12 +9,19 @@ import type { WorkflowDefinition } from "@/lib/workflow-schema/schema";
 /**
  * Exercises enqueue + execute against the real local Supabase stack (RLS,
  * the unique idempotency index, the queued/running/succeeded lifecycle,
- * the workflow_form_triggers join table from 0013) — unlike
- * interpreter.test.ts, which is pure and DB-free. Only external
- * side-effecting calls (fetch for the webhook action) are mocked; nothing
- * about the workflow engine itself is mocked, so this genuinely tests the
- * repository layer and the run.ts orchestration together.
+ * the workflow_form_triggers join table from 0013, and the trigger-type
+ * expansion from 0015: digest runs, schedule claim races, and the
+ * submission-path filter that must never fire a schedule-triggered
+ * workflow) — unlike interpreter.test.ts, which is pure and DB-free. Only
+ * external side-effecting calls (fetch for the webhook action) are mocked;
+ * nothing about the workflow engine itself is mocked, so this genuinely
+ * tests the repository layer and the run.ts orchestration together.
  */
+
+const inboundTokenAlphabet = customAlphabet(
+  "23456789abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",
+  32,
+);
 
 describe("workflow enqueue + execute (integration)", () => {
   let ownerId: string;
@@ -190,10 +198,37 @@ describe("workflow enqueue + execute (integration)", () => {
     };
   }
 
+  /** A schedule-triggered workflow whose responseAction runs over the digest ({{digest:list}} via append_note is not needed here — a static note is enough to prove execution). */
+  function digestWorkflowDefinition(triggerFormIds: string[]): WorkflowDefinition {
+    const triggerId = generateWorkflowId("node");
+    const actionId = generateWorkflowId("node");
+    return {
+      schemaVersion: 1,
+      nodes: [
+        {
+          id: triggerId,
+          type: "trigger",
+          position: { x: 0, y: 0 },
+          config: { event: "schedule", frequency: "daily", time: "08:00", formIds: triggerFormIds },
+        },
+        {
+          id: actionId,
+          type: "responseAction",
+          position: { x: 0, y: 100 },
+          config: { action: "mark_read" },
+        },
+      ],
+      edges: [
+        { id: generateWorkflowId("edge"), source: triggerId, target: actionId, sourceHandle: "out" },
+      ],
+    };
+  }
+
   /** Inserts a workflow row + its workflow_form_triggers join rows — mirrors what createWorkflow/saveWorkflowDefinition do together. */
   async function insertWorkflow(params: {
     name: string;
     status: "enabled" | "paused";
+    definition: WorkflowDefinition;
     triggerFormIds: string[];
   }): Promise<string> {
     const { data: workflow, error: workflowError } = await ownerClient
@@ -202,22 +237,25 @@ describe("workflow enqueue + execute (integration)", () => {
         workspace_id: workspaceId,
         name: params.name,
         status: params.status,
-        definition: workflowDefinitionWithResponseAction(params.triggerFormIds) as never,
+        definition: params.definition as never,
         schema_version: 1,
         webhook_secret: "test-secret",
+        inbound_token: inboundTokenAlphabet(),
         created_by: ownerId,
       })
       .select("id")
       .single();
     if (workflowError) throw workflowError;
 
-    const { error: triggerError } = await ownerClient.from("workflow_form_triggers").insert(
-      params.triggerFormIds.map((triggerFormId) => ({
-        workflow_id: workflow.id,
-        form_id: triggerFormId,
-      })),
-    );
-    if (triggerError) throw triggerError;
+    if (params.triggerFormIds.length > 0) {
+      const { error: triggerError } = await ownerClient.from("workflow_form_triggers").insert(
+        params.triggerFormIds.map((triggerFormId) => ({
+          workflow_id: workflow.id,
+          form_id: triggerFormId,
+        })),
+      );
+      if (triggerError) throw triggerError;
+    }
 
     return workflow.id;
   }
@@ -226,6 +264,7 @@ describe("workflow enqueue + execute (integration)", () => {
     const workflowId = await insertWorkflow({
       name: "Notiz-Workflow",
       status: "enabled",
+      definition: workflowDefinitionWithResponseAction([formId]),
       triggerFormIds: [formId],
     });
 
@@ -240,10 +279,11 @@ describe("workflow enqueue + execute (integration)", () => {
     const admin = serviceClient();
     const { data: run } = await admin
       .from("workflow_runs")
-      .select("status, error_message")
+      .select("status, error_message, trigger_type")
       .eq("id", runIds[0]!)
       .single();
     expect(run?.status).toBe("succeeded");
+    expect(run?.trigger_type).toBe("response_submitted");
 
     const { data: steps } = await admin
       .from("workflow_run_steps")
@@ -267,6 +307,7 @@ describe("workflow enqueue + execute (integration)", () => {
     const workflowId = await insertWorkflow({
       name: "Idempotenz-Workflow",
       status: "enabled",
+      definition: workflowDefinitionWithResponseAction([formId]),
       triggerFormIds: [formId],
     });
 
@@ -294,6 +335,7 @@ describe("workflow enqueue + execute (integration)", () => {
     const workflowId = await insertWorkflow({
       name: "Pausierter Workflow",
       status: "paused",
+      definition: workflowDefinitionWithResponseAction([formId]),
       triggerFormIds: [formId],
     });
 
@@ -310,6 +352,7 @@ describe("workflow enqueue + execute (integration)", () => {
     const workflowId = await insertWorkflow({
       name: "Multi-Formular-Workflow",
       status: "enabled",
+      definition: workflowDefinitionWithResponseAction([formId, secondFormId]),
       triggerFormIds: [formId, secondFormId],
     });
 
@@ -363,6 +406,7 @@ describe("workflow enqueue + execute (integration)", () => {
     const workflowId = await insertWorkflow({
       name: "Sync-Workflow",
       status: "paused",
+      definition: workflowDefinitionWithResponseAction([formId]),
       triggerFormIds: [formId],
     });
 
@@ -386,6 +430,104 @@ describe("workflow enqueue + execute (integration)", () => {
 
     expect(triggers).toHaveLength(1);
     expect(triggers![0]!.form_id).toBe(secondFormId);
+
+    await admin.from("workflows").delete().eq("id", workflowId);
+  });
+
+  it("never enqueues a schedule-triggered workflow from a form submission (0015 regression guard)", async () => {
+    // A workflow whose trigger EVENT is "schedule" but whose formIds happen
+    // to include `formId` — that formIds list is a DIGEST SCOPE, not a
+    // submission trigger. listEnabledWorkflowsForForm must filter it out.
+    const workflowId = await insertWorkflow({
+      name: "Zeitplan-Workflow",
+      status: "enabled",
+      definition: digestWorkflowDefinition([formId]),
+      triggerFormIds: [formId],
+    });
+
+    const responseId = await insertResponse();
+    const { enqueueWorkflowRuns } = await import("../run");
+    const runIds = await enqueueWorkflowRuns({ formId, responseId });
+    expect(runIds).toHaveLength(0);
+
+    const admin = serviceClient();
+    await admin.from("workflows").delete().eq("id", workflowId);
+  });
+
+  it("executes a digest run end-to-end using a frozen trigger_context window", async () => {
+    const workflowId = await insertWorkflow({
+      name: "Digest-Workflow",
+      status: "enabled",
+      definition: digestWorkflowDefinition([formId]),
+      triggerFormIds: [formId],
+    });
+
+    // Seed one response inside the window and confirm the digest run
+    // touches it (mark_read sets read_at).
+    const responseInWindow = await insertResponse();
+
+    const admin = serviceClient();
+    const { data: enqueued, error: enqueueError } = await admin
+      .from("workflow_runs")
+      .insert({
+        workflow_id: workflowId,
+        form_id: null,
+        response_id: null,
+        definition_snapshot: digestWorkflowDefinition([formId]) as never,
+        trigger_type: "schedule",
+        dedupe_key: `schedule:${new Date().toISOString()}`,
+        trigger_context: {
+          windowStart: null,
+          windowEnd: new Date(Date.now() + 60_000).toISOString(),
+        } as never,
+      })
+      .select("id")
+      .single();
+    if (enqueueError) throw enqueueError;
+
+    const { executeWorkflowRun } = await import("../run");
+    await executeWorkflowRun(enqueued.id);
+
+    const { data: run } = await admin
+      .from("workflow_runs")
+      .select("status, error_message")
+      .eq("id", enqueued.id)
+      .single();
+    expect(run?.error_message ?? null).toBeNull();
+    expect(run?.status).toBe("succeeded");
+
+    const { data: response } = await admin
+      .from("responses")
+      .select("read_at")
+      .eq("id", responseInWindow)
+      .single();
+    expect(response?.read_at).not.toBeNull();
+
+    await admin.from("workflows").delete().eq("id", workflowId);
+  });
+
+  it("claims a due scheduled workflow at most once under a race (optimistic conditional update)", async () => {
+    const { claimScheduledWorkflow } = await import("@/lib/db/repositories/workflow-runs");
+
+    const nextRunAt = new Date(Date.now() - 60_000).toISOString(); // already due
+    const workflowId = await insertWorkflow({
+      name: "Race-Workflow",
+      status: "enabled",
+      definition: digestWorkflowDefinition([formId]),
+      triggerFormIds: [formId],
+    });
+
+    const admin = serviceClient();
+    await admin.from("workflows").update({ next_run_at: nextRunAt }).eq("id", workflowId);
+
+    const patch = { nextRunAt: null, lastDigestAt: new Date().toISOString() };
+    const [first, second] = await Promise.all([
+      claimScheduledWorkflow(workflowId, nextRunAt, patch),
+      claimScheduledWorkflow(workflowId, nextRunAt, patch),
+    ]);
+
+    // Exactly one of the two concurrent claims wins the conditional update.
+    expect([first, second].filter(Boolean)).toHaveLength(1);
 
     await admin.from("workflows").delete().eq("id", workflowId);
   });

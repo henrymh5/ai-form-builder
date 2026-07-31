@@ -12,7 +12,7 @@ import {
   setWorkflowStatus,
   type WorkflowStatus,
 } from "@/lib/db/repositories/workflows";
-import { workflowDefinitionSchema } from "@/lib/workflow-schema/schema";
+import { workflowDefinitionSchema, type WorkflowDefinition } from "@/lib/workflow-schema/schema";
 import { validateWorkflowDefinition, isWorkflowValid } from "@/lib/workflow-schema/validate";
 import { listFormOptionsWithDefinitions } from "@/lib/db/repositories/forms";
 
@@ -84,13 +84,15 @@ export async function toggleWorkflowStatusAction(
   nextStatus: WorkflowStatus,
   definition: unknown,
 ): Promise<ToggleWorkflowResult> {
+  let parsedDefinition: WorkflowDefinition | undefined;
   if (nextStatus === "enabled") {
-    const parsedDefinition = workflowDefinitionSchema.safeParse(definition);
-    if (!parsedDefinition.success) {
+    const parsed = workflowDefinitionSchema.safeParse(definition);
+    if (!parsed.success) {
       return { status: "paused", error: "Die Workflow-Definition ist ungültig." };
     }
+    parsedDefinition = parsed.data;
     const forms = await listFormOptionsWithDefinitions(workspaceId);
-    const validation = validateWorkflowDefinition(parsedDefinition.data, forms);
+    const validation = validateWorkflowDefinition(parsedDefinition, forms);
     if (!isWorkflowValid(validation)) {
       return {
         status: "paused",
@@ -99,7 +101,7 @@ export async function toggleWorkflowStatusAction(
     }
   }
 
-  await setWorkflowStatus(workflowId, nextStatus);
+  await setWorkflowStatus(workflowId, nextStatus, parsedDefinition);
   revalidatePath("/workflows");
   revalidatePath(`/workflows/${workflowId}`);
   return { status: nextStatus };

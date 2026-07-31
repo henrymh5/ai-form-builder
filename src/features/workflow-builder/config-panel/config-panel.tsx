@@ -12,7 +12,13 @@ import { TriggerConfigForm } from "./trigger-config";
 import { WebhookConfigForm } from "./webhook-config";
 
 /** Right sidebar: config form for the selected node — mirrors form-builder/properties-panel.tsx's role. */
-export function ConfigPanel({ webhookSecret }: { webhookSecret: string | null }) {
+export function ConfigPanel({
+  webhookSecret,
+  inboundToken,
+}: {
+  webhookSecret: string | null;
+  inboundToken: string | null;
+}) {
   const nodes = useWorkflowEditorStore((s) => s.nodes);
   const selectedNodeId = useWorkflowEditorStore((s) => s.selectedNodeId);
   const forms = useWorkflowEditorStore((s) => s.forms);
@@ -59,6 +65,7 @@ export function ConfigPanel({ webhookSecret }: { webhookSecret: string | null })
         <TriggerConfigForm
           config={selectedNode.data.config}
           forms={forms}
+          inboundToken={inboundToken}
           onChange={(config) => updateNodeConfig(selectedNode.id, config)}
         />
       ) : selectedNode.data.type === "condition" ? (
