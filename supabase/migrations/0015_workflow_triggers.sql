@@ -56,12 +56,15 @@ create index workflows_due_schedule_idx on public.workflows (next_run_at)
 -- 5. Inbound webhook token — separate from webhook_secret (which is the
 --    OUTBOUND HMAC signing key and must never appear in a URL/proxy log).
 --    Application code (nanoid) generates tokens for new workflows in
---    createWorkflow; this backfill only covers pre-existing rows.
+--    createWorkflow; this backfill only covers pre-existing rows. Built from
+--    two core gen_random_uuid() calls (256 bits) rather than pgcrypto's
+--    gen_random_bytes — no extension dependency, and this is a one-time
+--    backfill for existing rows, not the production token generator.
 -- ---------------------------------------------------------------------------
 alter table public.workflows add column inbound_token text;
 
 update public.workflows
-set inbound_token = encode(gen_random_bytes(24), 'hex')
+set inbound_token = replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '')
 where inbound_token is null;
 
 alter table public.workflows alter column inbound_token set not null;
