@@ -45,6 +45,53 @@ export async function listEnabledWorkflowsForForm(formId: string): Promise<Enabl
     .filter((w) => getTriggerConfig(w.definition.nodes)?.event === "response_submitted");
 }
 
+export interface WorkspaceRunSummary {
+  id: string;
+  workflowId: string;
+  status: WorkflowRunStatus;
+  triggerType: TriggerEvent;
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+/**
+ * Runs across a set of workflows, newest first — used by the dashboard's
+ * workspace-wide workflow-activity panel. `workflowIds` must already be
+ * RLS-authorized by the caller (e.g. via `listWorkflows`), mirroring how
+ * `getWorkspaceOverview` derives its response query from `listForms`:
+ * workflow_runs itself has no RLS policy for `authenticated`, so this
+ * function is the service-role read, not the authorization boundary.
+ * Excludes test runs from these productive figures.
+ */
+export async function listRunsForWorkflows(
+  workflowIds: string[],
+  sinceISO: string,
+  limit = 200,
+): Promise<WorkspaceRunSummary[]> {
+  if (workflowIds.length === 0) return [];
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("workflow_runs")
+    .select("id, workflow_id, status, trigger_type, error_message, created_at")
+    .in("workflow_id", workflowIds)
+    .eq("is_test", false)
+    .gte("created_at", sinceISO)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+
+  return data.map((r) => ({
+    id: r.id,
+    workflowId: r.workflow_id,
+    status: r.status as WorkflowRunStatus,
+    triggerType: r.trigger_type as TriggerEvent,
+    errorMessage: r.error_message,
+    createdAt: r.created_at,
+  }));
+}
+
 export interface TriggerContextSnapshot {
   /** Digest window — new responses strictly after `windowStart` (or all, if null) up to and including `windowEnd`. */
   windowStart?: string | null;

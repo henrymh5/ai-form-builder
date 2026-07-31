@@ -1,5 +1,6 @@
 import "server-only";
 import { AppError } from "@/lib/errors";
+import { completionRate as computeCompletionRate } from "@/lib/analytics/rates";
 import { createUserClient } from "@/lib/db/user-client";
 import type { Field, FormDefinition } from "@/lib/form-schema/schema";
 import { hasOptions } from "@/lib/form-schema/schema";
@@ -83,7 +84,7 @@ export async function getAnalyticsOverview(formId: string): Promise<AnalyticsOve
     views: views ?? 0,
     starts,
     completions: completions ?? 0,
-    completionRate: starts > 0 ? (completions ?? 0) / starts : 0,
+    completionRate: computeCompletionRate(completions ?? 0, starts) ?? 0,
     avgDurationMs,
   };
 }

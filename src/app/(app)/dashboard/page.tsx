@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { CreateFormDialog } from "@/features/form-builder/create-form-dialog";
-import { DashboardOverview } from "@/features/workspaces/dashboard-overview";
+import { DashboardGrid } from "@/features/workspaces/dashboard/dashboard-grid";
 import { EmailConfirmedToast } from "@/features/workspaces/email-confirmed-toast";
 import { getCurrentUser } from "@/lib/db/repositories/profile";
 import { getWorkspaceOverview } from "@/lib/db/repositories/workspace-overview";
@@ -8,10 +8,12 @@ import { listMyWorkspaces } from "@/lib/db/repositories/workspaces";
 
 /** Workspace landing page: statistics and quick entry points. The form list lives at `/forms`. */
 export default async function DashboardPage() {
-  const user = await getCurrentUser();
+  // Both are cache()-wrapped and already resolved by the (app) layout above
+  // this page — the real serialization was inside getWorkspaceOverview
+  // (now parallelized there instead).
+  const [user, workspaces] = await Promise.all([getCurrentUser(), listMyWorkspaces()]);
   if (!user) redirect("/login");
 
-  const workspaces = await listMyWorkspaces();
   const workspace = workspaces[0];
   if (!workspace) {
     return <p className="text-text-secondary text-sm">Kein Workspace gefunden.</p>;
@@ -27,7 +29,7 @@ export default async function DashboardPage() {
         <CreateFormDialog workspaceId={workspace.id} />
       </div>
 
-      <DashboardOverview overview={overview} />
+      <DashboardGrid overview={overview} />
     </div>
   );
 }

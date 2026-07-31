@@ -1,7 +1,14 @@
 import "server-only";
 import { AppError } from "@/lib/errors";
+import { completionRate } from "@/lib/analytics/rates";
 import { createUserClient } from "@/lib/db/user-client";
-import { listForms, type FormSummary } from "@/lib/db/repositories/forms";
+import { listForms, type FormStatus, type FormSummary } from "@/lib/db/repositories/forms";
+import {
+  getWorkspaceTimeSeries,
+  getWorkspaceWorkflowActivity,
+  type WorkflowActivity,
+  type WorkspaceTimeSeries,
+} from "@/lib/db/repositories/workspace-analytics";
 
 export interface WorkspaceTotals {
   formCount: number;
@@ -10,7 +17,7 @@ export interface WorkspaceTotals {
   viewCount: number;
   startCount: number;
   responseCount: number;
-  /** Completions ÷ views across the workspace, or `null` when nothing has been viewed yet. */
+  /** Completions ÷ starts across the workspace, or `null` when nothing has started yet (matches analytics.ts/form-card.tsx's denominator). */
   completionRate: number | null;
 }
 
@@ -24,23 +31,31 @@ export interface RecentResponse {
 
 export interface WorkspaceOverview {
   totals: WorkspaceTotals;
+  /** Form counts by status, for the status donut — derived from `listForms`, no extra query. */
+  statusBreakdown: Record<FormStatus, number>;
+  timeSeries: WorkspaceTimeSeries;
+  /** Highest-response forms, for the dense top-forms table. */
+  topForms: FormSummary[];
   /** Most recently touched forms, for the "continue where you left off" grid. */
   recentForms: FormSummary[];
   recentResponses: RecentResponse[];
+  workflowActivity: WorkflowActivity;
 }
 
 const RECENT_FORM_LIMIT = 6;
 const RECENT_RESPONSE_LIMIT = 6;
+const TOP_FORM_LIMIT = 5;
 
 /**
  * Aggregated numbers for the workspace dashboard (plan §4).
  *
  * Builds on {@link listForms} rather than issuing its own per-form aggregates, so the dashboard
- * and the form list can never disagree about a form's counts. Both stay RLS-scoped; at
- * per-workspace volumes this is cheap enough that a materialized view isn't warranted yet.
+ * and the form list can never disagree about a form's counts. Everything here stays RLS-scoped;
+ * at per-workspace volumes this is cheap enough that a materialized view isn't warranted yet.
  */
 export async function getWorkspaceOverview(workspaceId: string): Promise<WorkspaceOverview> {
   const forms = await listForms(workspaceId);
+  const formIds = forms.map((f) => f.id);
 
   const totals = forms.reduce<WorkspaceTotals>(
     (acc, form) => ({
@@ -64,13 +79,35 @@ export async function getWorkspaceOverview(workspaceId: string): Promise<Workspa
   );
 
   const completions = forms.reduce((sum, form) => sum + form.completionCount, 0);
-  totals.completionRate = totals.viewCount > 0 ? completions / totals.viewCount : null;
+  totals.completionRate = completionRate(completions, totals.startCount);
+
+  const statusBreakdown: Record<FormStatus, number> = {
+    draft: 0,
+    published: 0,
+    paused: 0,
+    archived: 0,
+  };
+  for (const form of forms) statusBreakdown[form.status] += 1;
+
+  const [recentResponses, timeSeries, workflowActivity] = await Promise.all([
+    listRecentResponses(forms),
+    getWorkspaceTimeSeries(formIds),
+    getWorkspaceWorkflowActivity(workspaceId),
+  ]);
+
+  const topForms = [...forms]
+    .sort((a, b) => b.responseCount - a.responseCount)
+    .slice(0, TOP_FORM_LIMIT);
 
   return {
     totals,
+    statusBreakdown,
+    timeSeries,
+    topForms,
     // `listForms` already sorts by `updated_at` descending.
     recentForms: forms.slice(0, RECENT_FORM_LIMIT),
-    recentResponses: await listRecentResponses(forms),
+    recentResponses,
+    workflowActivity,
   };
 }
 

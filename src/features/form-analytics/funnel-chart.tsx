@@ -1,4 +1,5 @@
 import { Card, CardTitle } from "@/components/ui/card";
+import { ProportionBar } from "@/components/charts/proportion-bar";
 import type { FunnelStep } from "@/lib/db/repositories/analytics";
 
 /** Per-page funnel (plan §13): session counts reaching each page, in document order. */
@@ -20,12 +21,11 @@ export function FunnelChart({ steps }: { steps: FunnelStep[] }) {
                 </span>
                 <span>{step.sessionCount}</span>
               </div>
-              <div className="bg-surface-subtle h-2 w-full overflow-hidden rounded-full">
-                <div
-                  className="bg-primary h-full rounded-full"
-                  style={{ width: `${(step.sessionCount / maxCount) * 100}%` }}
-                />
-              </div>
+              <ProportionBar
+                value={step.sessionCount}
+                max={maxCount}
+                ariaLabel={`Seite ${index + 1}: ${step.pageTitle}`}
+              />
             </div>
           ))}
         </div>

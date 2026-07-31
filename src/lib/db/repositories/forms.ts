@@ -83,23 +83,31 @@ export async function listForms(
   const formIds = forms.map((f) => f.id);
 
   const [{ data: events }, { data: responses }] = await Promise.all([
-    supabase.from("form_events").select("form_id, event_type").in("form_id", formIds),
-    supabase.from("responses").select("form_id").in("form_id", formIds),
+    supabase.from("form_events").select("form_id, event_type, session_id").in("form_id", formIds),
+    // Test/spam submissions are excluded from productive figures (mirrors
+    // workspace-overview.ts's listRecentResponses and analytics.ts).
+    supabase.from("responses").select("form_id").in("form_id", formIds).eq("status", "completed"),
   ]);
 
   const viewCounts = new Map<string, number>();
-  const startCounts = new Map<string, number>();
   const completionCounts = new Map<string, number>();
+  // The renderer never fires a "start" event (see analytics.ts's header
+  // note) — starts are derived the same way getAnalyticsOverview does:
+  // distinct sessions that reached at least one page_view.
+  const startSessionsByForm = new Map<string, Set<string>>();
   for (const event of events ?? []) {
-    const map =
-      event.event_type === "view"
-        ? viewCounts
-        : event.event_type === "start"
-          ? startCounts
-          : event.event_type === "submit"
-            ? completionCounts
-            : null;
-    if (map) map.set(event.form_id, (map.get(event.form_id) ?? 0) + 1);
+    if (event.event_type === "view") {
+      viewCounts.set(event.form_id, (viewCounts.get(event.form_id) ?? 0) + 1);
+    } else if (event.event_type === "submit") {
+      completionCounts.set(event.form_id, (completionCounts.get(event.form_id) ?? 0) + 1);
+    } else if (event.event_type === "page_view") {
+      let sessions = startSessionsByForm.get(event.form_id);
+      if (!sessions) {
+        sessions = new Set();
+        startSessionsByForm.set(event.form_id, sessions);
+      }
+      sessions.add(event.session_id);
+    }
   }
 
   const responseCounts = new Map<string, number>();
@@ -116,7 +124,7 @@ export async function listForms(
     updatedAt: form.updated_at,
     publishedVersionId: form.published_version_id,
     viewCount: viewCounts.get(form.id) ?? 0,
-    startCount: startCounts.get(form.id) ?? 0,
+    startCount: startSessionsByForm.get(form.id)?.size ?? 0,
     completionCount: completionCounts.get(form.id) ?? 0,
     responseCount: responseCounts.get(form.id) ?? 0,
   }));

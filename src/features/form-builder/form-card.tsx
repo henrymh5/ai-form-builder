@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ShareDialog } from "@/features/form-builder/share-dialog";
 import { FormStatusBadge } from "@/features/form-builder/form-status-badge";
+import { completionRate } from "@/lib/analytics/rates";
 import type { FormSummary } from "@/lib/db/repositories/forms";
 import {
   archiveFormAction,
@@ -42,8 +43,8 @@ function formatDate(iso: string): string {
 }
 
 function conversionRate(form: FormSummary): string {
-  if (form.startCount === 0) return "–";
-  return `${Math.round((form.completionCount / form.startCount) * 100)}%`;
+  const rate = completionRate(form.completionCount, form.startCount);
+  return rate === null ? "–" : `${Math.round(rate * 100)}%`;
 }
 
 /**
